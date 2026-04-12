@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/health",
+      "schedule": "0 0 * * *"
+    }
+  ],
+  "functions": {
+    "app/api/cron/health/route.js": {
+      "maxDuration": 30
+    },
+    "app/api/status/route.js": {
+      "maxDuration": 30
+    }
+  }
+}
