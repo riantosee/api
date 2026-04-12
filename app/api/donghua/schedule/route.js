@@ -6,8 +6,8 @@
  * GET /api/donghua/schedule?day=sunday → hari tertentu
  */
 
-import { cacheGet, cacheSet }                           from '../../../lib/cache.js';
-import { successResponse, errorResponse, gatewayError } from '../../../lib/response-utils.js';
+import { cacheGet, cacheSet }                           from '../../../../lib/cache.js';
+import { successResponse, errorResponse, gatewayError } from '../../../../lib/response-utils.js';
 
 const BASE_URL  = 'https://donghuafilm.com';
 const SCHED_URL = `${BASE_URL}/schedule/`;
