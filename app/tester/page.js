@@ -26,8 +26,8 @@ const PRESETS = [
   ]},
   { g: 'donghua', label: 'Donghua', items: [
     { label: 'Search Donghua',   method: 'GET', path: '/api/donghua',          params: 'mode=search\nq=battle through the heavens\npage=1' },
-    { label: 'Latest Donghua',   method: 'GET', path: '/api/donghua',          params: 'mode=latest\npage=1' },
-    { label: 'Popular Donghua',  method: 'GET', path: '/api/donghua',          params: 'mode=popular' },
+    { label: 'Latest Donghua',   method: 'GET', path: '/api/donghua/latest', },
+    { label: 'Popular Donghua',  method: 'GET', path: '/api/donghua/popular',  },
     { label: 'Detail Donghua',   method: 'GET', path: '/api/donghua/detail',   params: 'slug=renegade-immortal-episode-135-subtitle-indonesia' },
     { label: 'Episodes Donghua', method: 'GET', path: '/api/donghua/episodes', params: 'slug=renegade-immortal' },
   ]},
