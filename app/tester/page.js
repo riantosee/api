@@ -30,6 +30,7 @@ const PRESETS = [
     { label: 'Popular Donghua',  method: 'GET', path: '/api/donghua/popular',  },
     { label: 'Detail Donghua',   method: 'GET', path: '/api/donghua/detail',   params: 'slug=renegade-immortal-episode-135-subtitle-indonesia' },
     { label: 'Episodes Donghua', method: 'GET', path: '/api/donghua/episodes', params: 'slug=renegade-immortal' },
+{ label: 'Schedule Donghua', method: 'GET', path: '/api/donghua/schedule', params: '' },
   ]},
   { g: 'system',  label: 'System',  items: [
     { label: 'All Statuses',   method: 'GET', path: '/api/status',  params: '' },
