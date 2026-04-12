@@ -10,7 +10,7 @@ import { cacheGet, cacheSet }                           from '../../../../lib/ca
 import { successResponse, errorResponse, gatewayError } from '../../../../lib/response-utils.js';
 
 const BASE_URL  = 'https://donghuafilm.com';
-const SCHED_URL = `${BASE_URL}/schedule/`;
+const SCHED_URL = `${BASE_URL}/segera-tayang/`;
 
 const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 
