@@ -23,8 +23,9 @@ const PRESETS = [
   ]},
   { g: 'manhua',  label: 'Manhua',  items: [
     { label: 'Search Manhua/Manhwa',  method: 'GET', path: '/api/manhua/search',  params: 'q=solo leveling' },
-{ label: 'Popular Manhua', method: 'GET', path: '/api/manhua/popular', params: '' },
-{ label: 'Latest Manhua', method: 'GET', path: '/api/manhua/latest', params: '' },
+{ label: 'Popular Manhua/Manhwa', method: 'GET', path: '/api/manhua/popular', params: '' },
+{ label: 'Latest Manhua/Manhwa',  method: 'GET', path: '/api/manhua/latest',  params: 'page=1' },
+{ label: 'Project Manhua/Manhwa', method: 'GET', path: '/api/manhua/project', params: 'page=1' },
   ]},
   { g: 'donghua', label: 'Donghua', items: [
     { label: 'Search Donghua',   method: 'GET', path: '/api/donghua/search',          params: 'q=battle through the heavens' },
