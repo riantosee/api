@@ -1,14 +1,14 @@
 /**
- * app/api/manhua/popular/route.js
- * Scraper "Terpopuler Hari Ini" — 01.komiku.asia
+ * app/api/manhua/populer/route.js
+ * Scraper "Popular Today" — manhwaindo.my
  *
- * GET /api/manhua/popular
+ * GET /api/manhua/populer
  */
 
-import { cacheGet, cacheSet }                           from '../../../../lib/cache.js';
-import { successResponse, errorResponse, gatewayError } from '../../../../lib/response-utils.js';
+import { cacheGet, cacheSet }                           from '../../../lib/cache.js';
+import { successResponse, errorResponse, gatewayError } from '../../../lib/response-utils.js';
 
-const BASE_URL = 'https://01.komiku.asia';
+const BASE_URL = 'https://www.manhwaindo.my';
 
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -23,9 +23,12 @@ const HEADERS = {
 // ─────────────────────────────────────────────────────────────────
 
 export async function GET() {
-  const cacheKey = `manhua:popular`;
+  const cacheKey = `manhua:populer`;
   const hit = await cacheGet(cacheKey);
-  if (hit) return successResponse(hit, { fromCache: true });
+  if (hit) {
+    const hasData = Array.isArray(hit) && hit.length > 0;
+    if (hasData) return successResponse(hit, { fromCache: true });
+  }
 
   try {
     const html    = await fetchPage(`${BASE_URL}/`);
@@ -34,7 +37,7 @@ export async function GET() {
     if (!results.length) return errorResponse(404, 'Data popular tidak ditemukan.');
 
     await cacheSet(cacheKey, results, 600);
-    return successResponse(results, { total: results.length, source: 'komiku.asia' });
+    return successResponse(results, { total: results.length, source: 'manhwaindo.my' });
   } catch (err) {
     return gatewayError(`Gagal ambil popular manhua: ${err.message}`);
   }
@@ -71,32 +74,36 @@ async function fetchPage(url) {
 // PARSER
 //
 // Struktur dari gambar:
-//   <div class="releases"><h2>Terpopuler Hari Ini</h2></div>
-//   <div class="listupd popularslider">
-//     <div class="popconslide">
-//       <div class="bs">
-//         <div class="bsx">
-//           <a href="https://01.komiku.asia/manga/only-i-have-an-ex-grade-summon/" title="...">
+//   <div class="bixbox hothome full">
+//     <div class="releases"><h2>Popular Today</h2></div>
+//     <div class="listupd popularslider">
+//       <div class="popconslide">
+//         <div class="bs"><div class="bsx">
+//           <a href="https://www.manhwaindo.my/series/..." title="...">
 //             <div class="limit">
 //               <div class="ply"></div>
-//               <span class="type Manhwa"></span>
-//               <span class="colored"><i class="fas fa-palette"></i> Warna</span>
+//               <span class="typename Manhwa">Manhwa</span>
+//               <span class="colored"><i class="fas fa-palette"></i> Color</span>
+//               <span class="hotx"><i class="fab fa-hotjar"></i></span>
 //             </div>
-//             <img src="https://...webp" class="ts-post-image..." title="..." alt="..." />
+//             <noscript>
+//               <img src="http://kacu.gmbr.pro/uploads/manga-images/s/..." class="ts-post-image..." loading="lazy" />
+//             </noscript>
+//             <img src="data:image/svg..." data-src="http://kacu.gmbr.pro/uploads/..." class="lazyload ts-post-image..." />
 //             <div class="bigor">
-//               <div class="tt">Only I Have An EX-Grade Summon</div>
+//               <div class="tt">Standard of Reincarnation ID</div>
 //               <div class="adds">
-//                 <div class="epxs">Chapter 20</div>
+//                 <div class="epxs">Chapter 176</div>
 //                 <div class="rt">
 //                   <div class="rating">
-//                     <div class="rating-prc"><div class="rtp"><div class="rtb"><span style="width:70%"></span></div></div></div>
-//                     <div class="numscore">7.00</div>
+//                     <div class="rating-prc"><div class="rtp"><div class="rtb"><span style="width:80%"></span></div></div></div>
+//                     <div class="numscore">8</div>
 //                   </div>
 //                 </div>
 //               </div>
 //             </div>
 //           </a>
-//         </div>
+//         </div></div>
 //       </div>
 //     </div>
 //   </div>
@@ -105,17 +112,16 @@ async function fetchPage(url) {
 function extractPopular(html) {
   const results = [];
 
-  // Cari seksi "Terpopuler Hari Ini"
-  const idx = html.search(/<h2[^>]*>\s*Terpopuler Hari Ini\s*<\/h2>/i);
+  // Cari seksi Popular Today
+  const idx = html.search(/<h2[^>]*>\s*Popular Today\s*<\/h2>/i);
   if (idx === -1) return results;
 
-  // Ambil dari situ, cukup 40k char
-  const slice = html.slice(idx, idx + 40000);
+  const slice = html.slice(idx, idx + 50000);
 
-  // Parse tiap div.bs
-  const bsRE = /<div\s+class="bs"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/gi;
+  // Parse tiap div.bsx
+  const bsxRE = /<div\s+class="bsx"[^>]*>([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/gi;
   let m;
-  while ((m = bsRE.exec(slice)) !== null) {
+  while ((m = bsxRE.exec(slice)) !== null) {
     const item = parseItem(m[1]);
     if (item) results.push(item);
     if (results.length >= 20) break;
@@ -126,53 +132,56 @@ function extractPopular(html) {
 
 function parseItem(block) {
   try {
-    // URL & title dari <a>
+    // URL & title
     const linkMatch = block.match(/<a\s+href="([^"]+)"\s+title="([^"]+)"/i);
     if (!linkMatch) return null;
     const url   = linkMatch[1];
     const title = linkMatch[2];
     const slug  = url.split('/').filter(Boolean).pop();
 
-    // Thumbnail — src langsung (bukan lazy)
-    const imgMatch = block.match(/<img\s+src="(https?:\/\/[^"]+)"[^>]*class="ts-post-image[^"]*"/i)
-                  || block.match(/<img[^>]+src="(https?:\/\/[^"]+)"/i);
-    const thumbnail = imgMatch ? imgMatch[1] : '';
+    // Thumbnail — prioritas: data-src (lazyload) → noscript img src
+    const lazySrc    = block.match(/data-src="(https?:\/\/[^"]+)"/i);
+    const noscriptSrc = block.match(/<noscript>[\s\S]*?<img[^>]+src="(https?:\/\/[^"]+)"/i);
+    const thumbnail  = lazySrc ? lazySrc[1] : (noscriptSrc ? noscriptSrc[1] : '');
 
-    // Type badge — span.type (Manhwa / Manhua / Manga)
-    const typeMatch = block.match(/<span\s+class="type\s+([^"]+)"><\/span>/i);
-    const type      = typeMatch ? typeMatch[1].trim() : '';
+    // Type — span.typename
+    const typeMatch = block.match(/<span\s+class="typename\s+([^"]+)">([^<]+)<\/span>/i);
+    const type      = typeMatch ? typeMatch[2].trim() : '';
 
-    // Colored badge
+    // Colored
     const isColored = /class="colored"/i.test(block);
+
+    // Hot badge
+    const isHot = /class="hotx"/i.test(block);
 
     // Title bersih dari div.tt
     const ttMatch    = block.match(/<div\s+class="tt">([^<]+)<\/div>/i);
     const titleClean = ttMatch ? ttMatch[1].trim() : title;
 
-    // Chapter terbaru dari div.epxs
+    // Chapter terbaru
     const chapterMatch = block.match(/<div\s+class="epxs">([^<]+)<\/div>/i);
     const chapter      = chapterMatch ? chapterMatch[1].trim() : '';
 
-    // Rating dari div.numscore
+    // Rating
     const ratingMatch = block.match(/<div\s+class="numscore">([^<]+)<\/div>/i);
     const rating      = ratingMatch ? parseFloat(ratingMatch[1]) : null;
 
-    // Rating bar width dari span style
-    const barMatch = block.match(/class="rtb"><span\s+style="width:([^"]+)"/i);
+    // Rating bar
+    const barMatch  = block.match(/class="rtb"><span\s+style="width:([^"]+)"/i);
     const ratingBar = barMatch ? barMatch[1] : '';
 
     return {
-      title:    titleClean,
+      title:      titleClean,
       slug,
       url,
       thumbnail,
-      type,           // "Manhwa", "Manhua", dll
-      is_colored: isColored,
-      chapter,        // "Chapter 20"
-      rating,         // 7.00
-      rating_bar: ratingBar, // "70%"
-      source:     'komiku.asia',
+      type,         // "Manhwa", "Manhua", dll
+      is_colored:  isColored,
+      is_hot:      isHot,
+      chapter,      // "Chapter 176"
+      rating,       // 8
+      rating_bar:  ratingBar, // "80%"
+      source:      'manhwaindo.my',
     };
   } catch { return null; }
 }
-
