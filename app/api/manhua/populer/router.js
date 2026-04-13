@@ -1,4 +1,4 @@
-/**
+/**7
  * app/api/manhua/populer/route.js
  * Scraper "Popular Today" — manhwaindo.my
  *
