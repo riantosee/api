@@ -5,8 +5,8 @@
  * GET /api/manhua/populer
  */
 
-import { cacheGet, cacheSet }                           from '../../../lib/cache.js';
-import { successResponse, errorResponse, gatewayError } from '../../../lib/response-utils.js';
+import { cacheGet, cacheSet }                           from '../../../../lib/cache.js';
+import { successResponse, errorResponse, gatewayError } from '../../../../lib/response-utils.js';
 
 const BASE_URL = 'https://www.manhwaindo.my';
 
