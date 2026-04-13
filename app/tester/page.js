@@ -24,8 +24,9 @@ const PRESETS = [
   { g: 'manhua',  label: 'Manhua',  items: [
     { label: 'Search Manhua/Manhwa',  method: 'GET', path: '/api/manhua/search',  params: 'q=solo leveling' },
 { label: 'Popular Manhua/Manhwa', method: 'GET', path: '/api/manhua/popular', params: '' },
-{ label: 'Latest Manhua/Manhwa',  method: 'GET', path: '/api/manhua/latest',  params: 'page=1' },
+{ label: 'Latest Manhua/Manhwa',  method: 'GET', path: '/api/manhua/latest',  params: '' },
 { label: 'Project Manhua/Manhwa', method: 'GET', path: '/api/manhua/project', params: 'page=1' },
+{ label: 'Detail Manhua/Manhwa', method: 'GET', path: '/api/manhua/detail', params: 'pslug=only-i-have-an-ex-grade-summon' },
   ]},
   { g: 'donghua', label: 'Donghua', items: [
     { label: 'Search Donghua',   method: 'GET', path: '/api/donghua/search',          params: 'q=battle through the heavens' },
