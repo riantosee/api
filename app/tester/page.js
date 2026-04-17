@@ -19,7 +19,8 @@ const PRESETS = [
     { label: 'Trending Anime', method: 'GET', path: '/api/anime/trending', params: 'provider=jikan-anime' },
   ]},
   { g: 'manga',   label: 'Manga',   items: [
-    { label: 'Search Manga',   method: 'GET', path: '/api/manga/search',   params: 'q=one piece\nprovider=mangadex' },
+    { label: 'Search Manga',   method: 'GET', path: '/api/manga/search',   params: 'q=naruto' },
+{ label: 'Latest Manga',   method: 'GET', path: '/api/manga/latest',   params: 'q=naruto' },
   ]},
   { g: 'manhua',  label: 'Manhua',  items: [
     { label: 'Search Manhua/Manhwa',  method: 'GET', path: '/api/manhua/search',  params: 'q=solo leveling' },
