@@ -20,7 +20,7 @@ const PRESETS = [
   ]},
   { g: 'manga',   label: 'Manga',   items: [
     { label: 'Search Manga',   method: 'GET', path: '/api/manga/search',   params: 'q=naruto' },
-{ label: 'Latest Manga',   method: 'GET', path: '/api/manga/latest',   params: 'q=naruto' },
+{ label: 'Latest Manga',   method: 'GET', path: '/api/manga/latest',   params: '' },
   ]},
   { g: 'manhua',  label: 'Manhua',  items: [
     { label: 'Search Manhua/Manhwa',  method: 'GET', path: '/api/manhua/search',  params: 'q=solo leveling' },
