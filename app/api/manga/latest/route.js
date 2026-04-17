@@ -1,21 +1,16 @@
 /**
  * app/api/manga/latest/route.js
- * Manga chapter terbaru — via API resmi api.komiku.org
+ * Latest manga update — Komikstation only
  *
- * GET /api/manga/latest
- * GET /api/manga/latest?page=2
+ * LATEST UPDATE:
+ *   GET /api/manga/latest
+ *   GET /api/manga/latest?page=2
  *
- * Sumber API:
- *   https://api.komiku.org/manga/type/manga/order/update/page/[page]/
- *
- * Tidak perlu ScraperAPI — api.komiku.org adalah REST API resmi,
- * tidak memblokir IP datacenter Vercel.
+ * Source: https://komikstation.org
  */
 
-import { cacheGet, cacheSet }                           from '../../../../lib/cache.js';
-import { successResponse, errorResponse, gatewayError } from '../../../../lib/response-utils.js';
-
-const BASE = 'https://api.komiku.org';
+import { cacheGet, cacheSet } from '../../../../lib/cache.js';
+import { successResponse, gatewayError } from '../../../../lib/response-utils.js';
 
 // ─────────────────────────────────────────────────────────────────
 // ROUTE HANDLER
@@ -23,111 +18,211 @@ const BASE = 'https://api.komiku.org';
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, Number(searchParams.get('page') || 1));
+  const page = Number(searchParams.get('page') || 1);
 
-  const cacheKey = `manga:latest:komiku:${page}`;
+  const cacheKey = `manga:latest:komikstation:${page}`;
   const hit = await cacheGet(cacheKey);
   if (hit) return successResponse(hit, { fromCache: true });
 
   try {
-    const results = await fetchLatestKomiku(page);
-
-    const payload = {
-      page,
-      source  : 'komiku',
-      total   : results.length,
-      results,
-    };
-
-    // Cache 3 menit — chapter bisa sering berubah
-    await cacheSet(cacheKey, payload, 180);
+    const results = await fetchLatestKomikstation(page);
+    const payload = { page, source: 'komikstation', mode: 'latest', total: results.length, results };
+    await cacheSet(cacheKey, payload, 180); // cache 3 menit (data update cepat)
     return successResponse(payload);
-
   } catch (err) {
-    console.error('[manga/latest][komiku]', err.message);
-    return gatewayError(`Gagal mengambil chapter terbaru: ${err.message}`);
+    console.error('[manga/latest][komikstation]', err.message);
+    return gatewayError(`Gagal mengambil latest manga: ${err.message}`);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────
-// FETCHER — pakai API resmi api.komiku.org
-// Endpoint: /manga/type/manga/order/update/page/{page}/
-// Response JSON langsung, tidak perlu scraping HTML
+// FETCH HELPER — shared headers & timeout
 // ─────────────────────────────────────────────────────────────────
 
-async function fetchLatestKomiku(page) {
-  const url = `${BASE}/manga/type/manga/order/update/page/${page}/`;
+const BASE_HEADERS = {
+  'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept'     : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Referer'    : 'https://komikstation.org/',
+};
 
-  const res = await fetchWithTimeout(url, {
-    'Accept'     : 'application/json',
-    'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-  }, 10000);
+async function fetchHtml(targetUrl) {
+  const scraperKey = process.env.SCRAPER_API_KEY;
 
-  const json = JSON.parse(res);
+  const fetchUrl = scraperKey
+    ? `http://api.scraperapi.com?api_key=${scraperKey}&url=${encodeURIComponent(targetUrl)}&render=false`
+    : targetUrl;
 
-  // api.komiku.org mengembalikan array di field "data"
-  const list = json?.data || json || [];
-  if (!Array.isArray(list)) throw new Error('Format respons tidak dikenal dari api.komiku.org');
+  const headers  = scraperKey ? {} : BASE_HEADERS;
 
-  return list.map(normalizeItem);
-}
-
-// ─────────────────────────────────────────────────────────────────
-// NORMALIZER — seragamkan field dari api.komiku.org
-//
-// Contoh item dari API:
-// {
-//   "title"    : "Boruto: Two Blue Vortex",
-//   "image"    : "https://thumbnail.komiku.org/...",
-//   "desc"     : "Boruto melangkah dalam dunia ninjutsu...",
-//   "type"     : "Manga",
-//   "endpoint" : "/manga/boruto-two-blue-vortex/"
-// }
-// ─────────────────────────────────────────────────────────────────
-
-function normalizeItem(m) {
-  const endpoint = m.endpoint || '';
-  const slugMatch = endpoint.match(/\/manga\/([^/]+)\/?$/i);
-  const slug      = slugMatch ? slugMatch[1] : '';
-  const mangaUrl  = slug ? `https://komiku.org/manga/${slug}/` : '';
-
-  return {
-    id        : slug,
-    title     : m.title     || '',
-    slug,
-    url       : mangaUrl,
-    endpoint,                          // raw endpoint, berguna untuk hit API lain
-    thumbnail : m.image     || '',
-    synopsis  : (m.desc     || '').slice(0, 300),
-    type      : m.type      || '',
-    // Field update time kadang ada di "desc" sebagai prefix "Update X lalu."
-    lastUpdate: parseUpdateTime(m.desc || ''),
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────
-// HELPER — ekstrak waktu update dari string deskripsi
-// Contoh desc: "Update 18 menit lalu. Boruto melangkah..."
-// ─────────────────────────────────────────────────────────────────
-
-function parseUpdateTime(desc) {
-  const match = desc.match(/^Update\s+(.+?)\.\s*/i);
-  return match ? match[1].trim() : '';  // "18 menit lalu", "5 hari lalu", dst.
-}
-
-// ─────────────────────────────────────────────────────────────────
-// FETCH HELPER
-// ─────────────────────────────────────────────────────────────────
-
-async function fetchWithTimeout(url, headers, timeoutMs) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer      = setTimeout(() => controller.abort(), 20000);
   try {
-    const res = await fetch(url, { signal: controller.signal, headers });
-    if (res.status === 403) throw new Error('Akses ditolak (403)');
-    if (!res.ok)            throw new Error(`HTTP ${res.status}`);
+    const res = await fetch(fetchUrl, { signal: controller.signal, headers });
+    if (res.status === 403) throw new Error('Akses ditolak (403) — coba set SCRAPER_API_KEY');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.text();
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// LATEST — https://komikstation.org/manga/?status=&type=manga&order=update
+// ─────────────────────────────────────────────────────────────────
+
+async function fetchLatestKomikstation(page) {
+  const target = new URL('https://komikstation.org/manga/');
+  target.searchParams.set('status', '');
+  target.searchParams.set('type', 'manga');
+  target.searchParams.set('order', 'update');
+  if (page > 1) target.searchParams.set('page', page);
+
+  const html = await fetchHtml(target.toString());
+  return parseKomikstationHtml(html);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// HTML PARSER — struktur bsx dari komikstation.org
+//
+// <div class="bs">
+//   <div class="bsx">
+//     <a href="https://komikstation.org/manga/slug/" title="Judul">
+//       <div class="limit">
+//         <span class="type Manga">Manga</span>
+//         <noscript><img src="https://.../cover.jpg" /></noscript>
+//         <img data-src="https://.../cover.jpg" class="lazyload ..." />
+//       </div>
+//       <div class="bigor">
+//         <div class="tt"> Judul</div>
+//         <div class="adds">
+//           <div class="epxs">Chapter 46</div>
+//           <div class="rt">
+//             <div class="numscore">10</div>
+//           </div>
+//         </div>
+//         <div class="titleheading"><h2>Judul</h2></div>
+//       </div>
+//     </a>
+//   </div>
+// </div>
+// ─────────────────────────────────────────────────────────────────
+
+function parseKomikstationHtml(html) {
+  if (!html || typeof html !== 'string') return [];
+
+  const results = [];
+  const bsxRE = /<div\s+class="bsx">([\s\S]*?)(?=<div\s+class="bsx"|$)/gi;
+  let block;
+
+  while ((block = bsxRE.exec(html)) !== null) {
+    const item = parseKomikstationItem(block[1]);
+    if (item) results.push(item);
+  }
+
+  return results.length > 0 ? results : parseKomikstationFallback(html);
+}
+
+function parseKomikstationItem(content) {
+  // ── URL & title dari tag <a href=".../manga/slug/" title="...">
+  const linkMatch = content.match(
+    /<a\s+href="(https?:\/\/komikstation\.org\/manga\/([^/"]+)\/?)"(?:[^>]*\btitle="([^"]*)")?[^>]*>/i
+  );
+  if (!linkMatch) return null;
+
+  const url  = linkMatch[1];
+  const slug = linkMatch[2] || '';
+  // Skip halaman paginasi /manga/page/N/
+  if (/^page$/i.test(slug)) return null;
+
+  // Prioritas judul: atribut title="" → <div class="tt"> → <h2>
+  let title = (linkMatch[3] || '').trim();
+  if (!title) {
+    const ttM = content.match(/<div\s+class="tt"[^>]*>\s*([^<]+?)\s*<\/div>/i)
+             || content.match(/<h2[^>]*>\s*([^<]+?)\s*<\/h2>/i);
+    title = ttM ? ttM[1].trim() : slug;
+  }
+  if (!title) return null;
+
+  // ── Thumbnail
+  // 1. <noscript><img src="..."> — gambar asli tanpa lazy load
+  // 2. <img data-src="...">     — lazy load
+  // 3. <img src="...komikstation..."> — fallback
+  const noscriptM = content.match(/<noscript>[\s\S]*?<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*>/i);
+  const dataSrcM  = content.match(/<img[^>]+data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i);
+  const srcM      = content.match(/<img[^>]+src="(https?:\/\/komikstation\.org\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i);
+  const thumbnail = (noscriptM || dataSrcM || srcM)?.[1] || '';
+
+  // ── Chapter terakhir: <div class="epxs">Chapter 46</div>
+  const chapterM    = content.match(/<div\s+class="epxs"[^>]*>\s*([^<]+?)\s*<\/div>/i);
+  const lastChapter = chapterM ? chapterM[1].trim() : '';
+
+  // ── Score: <div class="numscore">10</div>
+  const scoreM = content.match(/<div\s+class="numscore"[^>]*>\s*([^<]+?)\s*<\/div>/i);
+  const score  = scoreM ? parseFloat(scoreM[1].trim()) || null : null;
+
+  // ── Tipe: <span class="type Manga"> / Manhwa / Manhua dll
+  const typeM = content.match(/<span\s+class="type\s+([^"]+)"[^>]*>([^<]*)<\/span>/i);
+  const type  = typeM ? (typeM[2].trim() || typeM[1].trim()) : 'Manga';
+
+  return {
+    id          : slug,
+    title,
+    slug,
+    url,
+    thumbnail,
+    type,
+    lastChapter,
+    score,
+    author      : '',
+    genres      : [],
+    synopsis    : '',
+    status      : '',
+    year        : null,
+  };
+}
+
+function parseKomikstationFallback(html) {
+  // Fallback minimal: scan semua link /manga/slug/
+  const results = [];
+  const seen    = new Set();
+  const linkRE  = /<a\s+href="(https?:\/\/komikstation\.org\/manga\/([^/"?#]+)\/?)"(?:[^>]*\btitle="([^"]*)")?[^>]*>/gi;
+  let m;
+
+  while ((m = linkRE.exec(html)) !== null) {
+    const url  = m[1];
+    const slug = m[2];
+    if (!slug || seen.has(url)) continue;
+    if (/^page$/i.test(slug)) continue;
+    seen.add(url);
+
+    const title = (m[3] || '').trim() || slug;
+
+    // Thumbnail: cari di area sebelum/sesudah link
+    const before    = html.slice(Math.max(0, m.index - 800), m.index);
+    const noscriptM = before.match(/<noscript>[\s\S]*?<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*>/i);
+    const dataSrcM  = before.match(/<img[^>]+data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i);
+    const thumbnail = (noscriptM || dataSrcM)?.[1] || '';
+
+    const after    = html.slice(m.index, m.index + 500);
+    const chapterM = after.match(/<div\s+class="epxs"[^>]*>\s*([^<]+?)\s*<\/div>/i);
+    const scoreM   = after.match(/<div\s+class="numscore"[^>]*>\s*([^<]+?)\s*<\/div>/i);
+
+    results.push({
+      id          : slug,
+      title,
+      slug,
+      url,
+      thumbnail,
+      type        : 'Manga',
+      lastChapter : chapterM ? chapterM[1].trim() : '',
+      score       : scoreM   ? parseFloat(scoreM[1].trim()) || null : null,
+      author      : '',
+      genres      : [],
+      synopsis    : '',
+      status      : '',
+      year        : null,
+    });
+  }
+
+  return results;
 }
