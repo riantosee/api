@@ -3,15 +3,15 @@
  * Search manga — multi source
  *
  * GET /api/manga/search?q=Naruto
- * GET /api/manga/search?q=Naruto&source=mangadex   (default)
- * GET /api/manga/search?q=Naruto&source=komiku     (butuh ScraperAPI / tidak di-block)
- * GET /api/manga/search?q=Naruto&source=jikan      (MyAnimeList data)
+ * GET /api/manga/search?q=Naruto&source=mangadex      (default)
+ * GET /api/manga/search?q=Naruto&source=komikstation   (bahasa Indonesia)
+ * GET /api/manga/search?q=Naruto&source=jikan          (MyAnimeList data)
  * GET /api/manga/search?q=Naruto&page=2
  *
- * KENAPA KOMIKU 502 DI VERCEL:
- *   komiku.org memblokir IP datacenter Vercel.
+ * CATATAN KOMIKSTATION DI VERCEL:
+ *   komikstation.org mungkin memblokir IP datacenter Vercel.
  *   Gunakan source=mangadex (default) yang 100% work di Vercel.
- *   Komiku hanya bisa jalan jika SCRAPER_API_KEY tersedia di env.
+ *   Komikstation bisa pakai SCRAPER_API_KEY jika di-block.
  */
 
 import { cacheGet, cacheSet }                           from '../../../../lib/cache.js';
@@ -43,11 +43,11 @@ export async function GET(req) {
       case 'jikan':
         results = await searchJikan(query, page);
         break;
-      case 'komiku':
-        results = await searchKomiku(query, page);
+      case 'komikstation':
+        results = await searchKomikstation(query, page);
         break;
       default:
-        return errorResponse(400, `Source "${source}" tidak dikenal. Pilih: mangadex, jikan, komiku`);
+        return errorResponse(400, `Source "${source}" tidak dikenal. Pilih: mangadex, jikan, komikstation`);
     }
 
     const payload = { query, page, source, total: results.length, results };
@@ -157,15 +157,15 @@ async function searchJikan(query, page) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// SOURCE 3: KOMIKU — bahasa Indonesia, butuh ScraperAPI di Vercel
-// (IP Vercel di-block komiku.org tanpa proxy)
+// SOURCE 3: KOMIKSTATION — bahasa Indonesia
+// URL: https://komikstation.org/?s=query
+// (Gunakan ScraperAPI jika IP Vercel di-block)
 // ─────────────────────────────────────────────────────────────────
 
-async function searchKomiku(query, page) {
+async function searchKomikstation(query, page) {
   const scraperKey = process.env.SCRAPER_API_KEY;
 
-  const target = new URL('https://api.komiku.org/');
-  target.searchParams.set('post_type', 'manga');
+  const target = new URL('https://komikstation.org/');
   target.searchParams.set('s', query);
   if (page > 1) target.searchParams.set('page', page);
 
@@ -176,81 +176,142 @@ async function searchKomiku(query, page) {
     fetchUrl     = `http://api.scraperapi.com?api_key=${scraperKey}&url=${encodeURIComponent(target.toString())}&render=false`;
     fetchHeaders = {};
   } else {
-    // Tanpa proxy — hanya work di local/VPS, bukan di Vercel
+    // Tanpa proxy — coba langsung (mungkin di-block di Vercel)
     fetchUrl     = target.toString();
     fetchHeaders = {
       'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'HX-Request' : 'true',
-      'HX-Trigger' : 'revealed',
-      'Referer'    : 'https://komiku.org/',
+      'Accept'     : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Referer'    : 'https://komikstation.org/',
     };
   }
 
   const html = await fetchWithTimeout(fetchUrl, fetchHeaders, 20000);
-  return parseKomikuHtml(html);
+  return parseKomikstationHtml(html);
 }
 
 // ─────────────────────────────────────────────────────────────────
-// KOMIKU HTML PARSER
+// KOMIKSTATION HTML PARSER
+// Struktur: <div class="bsx"> > <a href> > <div class="bigor">
+//   > <div class="tt">Judul</div>
+//   > <div class="adds"><div class="epxs">Chapter X</div>
+//   > <div class="numscore">5.1</div>
+//   Thumbnail: <img data-src="..." /> atau <img src="..." />
 // ─────────────────────────────────────────────────────────────────
 
-function parseKomikuHtml(html) {
+function parseKomikstationHtml(html) {
   if (!html || typeof html !== 'string') return [];
 
   const results = [];
-  const bgeRE   = /<div\s+class="bge">([\s\S]*?)(?=<div\s+class="bge"|$)/gi;
+  // Setiap item dibungkus <div class="bsx"> ... </div>
+  const bsxRE = /<div\s+class="bsx">([\s\S]*?)(?=<div\s+class="bsx"|$)/gi;
   let block;
 
-  while ((block = bgeRE.exec(html)) !== null) {
-    const item = parseKomikuItem(block[1]);
+  while ((block = bsxRE.exec(html)) !== null) {
+    const item = parseKomikstationItem(block[1]);
     if (item) results.push(item);
   }
 
-  return results.length > 0 ? results : parseKomikuFallback(html);
+  return results.length > 0 ? results : parseKomikstationFallback(html);
 }
 
-function parseKomikuItem(content) {
-  const linkMatch = content.match(/<h3[^>]*>\s*<a\s+href="([^"]+)"[^>]*>([^<]+)<\/a>/i)
-                 || content.match(/<a\s+href="(https?:\/\/komiku\.org\/manga\/[^"]+)"[^>]*>([^<]{2,})<\/a>/i);
+function parseKomikstationItem(content) {
+  // Ambil URL & judul dari <a href="...">
+  const linkMatch = content.match(/<a\s+href="(https?:\/\/komikstation\.org\/[^"]+)"[^>]*>/i);
   if (!linkMatch) return null;
 
   const url   = linkMatch[1];
-  const title = linkMatch[2].trim();
-  const slugM = url.match(/\/manga\/([^/]+)\/?$/i);
+  const slugM = url.match(/komikstation\.org\/([^/?#]+)\/?$/i);
   const slug  = slugM ? slugM[1] : '';
 
-  const imgM      = content.match(/<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp))"[^>]*>/i);
-  const genreM    = content.match(/<p\s+class="jdl2"[^>]*>([^<]+)<\/p>/i);
-  const synopsisM = content.match(/<p\s+class="jdl2"[^>]*>[^<]+<\/p>\s*<p[^>]*>([^<]+)<\/p>/i);
-  const statusM   = content.match(/Status:\s*<\/td>\s*<td[^>]*>([^<]+)<\/td>/i);
-  const typeM     = content.match(/Jenis:\s*<\/td>\s*<td[^>]*>([^<]+)<\/td>/i);
+  // Judul dari <div class="tt"> atau <div class="titleheading"><h2>
+  const titleM = content.match(/<div\s+class="tt"[^>]*>([^<]+)<\/div>/i)
+              || content.match(/<h2[^>]*>([^<]+)<\/h2>/i);
+  if (!titleM) return null;
+  const title = titleM[1].trim();
+
+  // Thumbnail — coba data-src dulu (lazy load), lalu src biasa
+  const imgM = content.match(/<img[^>]+data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i)
+            || content.match(/<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i);
+  const thumbnail = imgM ? imgM[1] : '';
+
+  // Chapter terakhir dari <div class="epxs">
+  const chapterM = content.match(/<div\s+class="epxs"[^>]*>([^<]+)<\/div>/i);
+  const lastChapter = chapterM ? chapterM[1].trim() : '';
+
+  // Score dari <div class="numscore">
+  const scoreM = content.match(/<div\s+class="numscore"[^>]*>([^<]+)<\/div>/i);
+  const score  = scoreM ? parseFloat(scoreM[1].trim()) || null : null;
+
+  // Genre dari <span class="type ..."> atau meta info
+  const typeM  = content.match(/<span\s+class="type[^"]*"[^>]*>([^<]+)<\/span>/i);
+  const type   = typeM ? typeM[1].trim() : 'manga';
 
   return {
-    id        : slug,
+    id           : slug,
     title,
-    url,
     slug,
-    thumbnail : imgM      ? imgM[1]                                                    : '',
-    genres    : genreM    ? genreM[1].replace(/^Genre:\s*/i,'').split(',').map(g=>g.trim()).filter(Boolean) : [],
-    synopsis  : synopsisM ? synopsisM[1].trim()                                        : '',
-    status    : statusM   ? statusM[1].trim()                                          : '',
-    type      : typeM     ? typeM[1].trim()                                            : '',
+    url,
+    thumbnail,
+    author       : '',
+    genres       : [],
+    synopsis     : '',
+    status       : '',
+    type,
+    year         : null,
+    rating       : '',
+    score,
+    lastChapter,
   };
 }
 
-function parseKomikuFallback(html) {
+function parseKomikstationFallback(html) {
+  // Fallback: cari semua link manga dari domain komikstation.org
   const results = [];
   const seen    = new Set();
-  const linkRE  = /<a\s+href="(https?:\/\/komiku\.org\/manga\/[^"]+)"[^>]*>([^<]{3,})<\/a>/gi;
+  const linkRE  = /<a\s+href="(https?:\/\/komikstation\.org\/[^"?#]+)"[^>]*>/gi;
   let m;
+
   while ((m = linkRE.exec(html)) !== null) {
-    if (seen.has(m[1])) continue;
-    seen.add(m[1]);
-    const slugM = m[1].match(/\/manga\/([^/]+)\/?$/i);
-    const before = html.slice(Math.max(0, m.index - 400), m.index);
-    const imgM   = before.match(/<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp))"[^>]*/i);
-    results.push({ id: slugM?.[1]||'', title: m[2].trim(), url: m[1], slug: slugM?.[1]||'', thumbnail: imgM?.[1]||'', genres:[], synopsis:'', status:'', type:'' });
+    const url = m[1];
+    // Hanya ambil URL yang kemungkinan halaman manga (bukan kategori/tag/page)
+    if (seen.has(url)) continue;
+    if (/\/(category|tag|page|wp-content|feed)\//i.test(url)) continue;
+    seen.add(url);
+
+    const slugM = url.match(/komikstation\.org\/([^/?#]+)\/?$/i);
+    const slug  = slugM ? slugM[1] : '';
+
+    // Cari thumbnail di sekitar link ini
+    const before = html.slice(Math.max(0, m.index - 600), m.index);
+    const imgM   = before.match(/<img[^>]+data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i)
+                || before.match(/<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i);
+
+    // Cari judul di sekitar link ini
+    const after    = html.slice(m.index, m.index + 400);
+    const titleM   = after.match(/<div\s+class="tt"[^>]*>([^<]+)<\/div>/i)
+                  || after.match(/<h2[^>]*>([^<]+)<\/h2>/i);
+    const title    = titleM ? titleM[1].trim() : slug;
+
+    if (!title || title.length < 2) continue;
+
+    results.push({
+      id          : slug,
+      title,
+      slug,
+      url,
+      thumbnail   : imgM ? imgM[1] : '',
+      author      : '',
+      genres      : [],
+      synopsis    : '',
+      status      : '',
+      type        : 'manga',
+      year        : null,
+      rating      : '',
+      score       : null,
+      lastChapter : '',
+    });
   }
+
   return results;
 }
 
