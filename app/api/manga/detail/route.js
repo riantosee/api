@@ -323,22 +323,37 @@ function parseDateModified(html) {
 
 function parseChapters(html) {
   const chapters = [];
-  const ephRE    = /<div\s+class="eph-num"[^>]*>([\s\S]*?)<\/div>/gi;
-  let block;
+  const seen     = new Set();
 
-  while ((block = ephRE.exec(html)) !== null) {
-    const content = block[1];
-    const linkM   = content.match(
-      /<a\s+href="(https?:\/\/komikstation\.org\/manga\/[^/]+\/([^/"]+)\/?)"/i
+  // Ambil blok #chapterlist
+  const listM = html.match(/id="chapterlist"[^>]*>([\s\S]*?)<\/ul>/i)
+             || html.match(/class="eplister"[^>]*>[\s\S]*?<ul[^>]*>([\s\S]*?)<\/ul>/i);
+  const source = listM ? listM[1] : html;
+
+  // Scan setiap <li data-num="...">
+  const liRE = /<li\s[^>]*data-num="([^"]+)"[^>]*>([\s\S]*?)<\/li>/gi;
+  let li;
+
+  while ((li = liRE.exec(source)) !== null) {
+    const dataNum = li[1].trim();
+    const content = li[2];
+
+    const linkM = content.match(
+      /<a\s+href="(https?:\/\/komikstation\.org\/([^"]+?-chapter-[^"]+?)\/?)"[^>]*>/i
     );
     if (!linkM) continue;
 
     const chapterUrl  = linkM[1];
-    const chapterSlug = linkM[2];
-    const numM        = content.match(/<span\s+class="chapternum"[^>]*>\s*([^<]+?)\s*<\/span>/i);
-    const dateM       = content.match(/<span\s+class="chapterdate"[^>]*>\s*([^<]+?)\s*<\/span>/i);
-    const numText     = numM ? numM[1].trim() : chapterSlug;
-    const numParsed   = parseFloat(numText.replace(/[^0-9.]/g, '')) || null;
+    const slugParts   = linkM[2].split('/').filter(Boolean);
+    const chapterSlug = slugParts[slugParts.length - 1] || linkM[2];
+
+    if (seen.has(chapterUrl)) continue;
+    seen.add(chapterUrl);
+
+    const numM      = content.match(/<span\s+class="chapternum"[^>]*>\s*([^<]+?)\s*<\/span>/i);
+    const dateM     = content.match(/<span\s+class="chapterdate"[^>]*>\s*([^<]+?)\s*<\/span>/i);
+    const numText   = numM ? numM[1].trim() : `Chapter ${dataNum}`;
+    const numParsed = parseFloat(dataNum) || parseFloat(numText.replace(/[^0-9.]/g, '')) || null;
 
     chapters.push({
       slug   : chapterSlug,
@@ -347,6 +362,36 @@ function parseChapters(html) {
       date   : dateM ? dateM[1].trim() : '',
       url    : chapterUrl,
     });
+  }
+
+  // Fallback jika li data-num tidak ketemu
+  if (chapters.length === 0) {
+    const ephRE = /<div\s+class="eph-num"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/gi;
+    let block;
+    while ((block = ephRE.exec(html)) !== null) {
+      const content = block[1];
+      const linkM   = content.match(
+        /<a\s+href="(https?:\/\/komikstation\.org\/([^"]+?-chapter-[^"]+?)\/?)"[^>]*>/i
+      );
+      if (!linkM || seen.has(linkM[1])) continue;
+      seen.add(linkM[1]);
+
+      const chapterUrl  = linkM[1];
+      const slugParts   = linkM[2].split('/').filter(Boolean);
+      const chapterSlug = slugParts[slugParts.length - 1] || linkM[2];
+      const numM        = content.match(/<span\s+class="chapternum"[^>]*>\s*([^<]+?)\s*<\/span>/i);
+      const dateM       = content.match(/<span\s+class="chapterdate"[^>]*>\s*([^<]+?)\s*<\/span>/i);
+      const numText     = numM ? numM[1].trim() : chapterSlug;
+      const numParsed   = parseFloat(numText.replace(/[^0-9.]/g, '')) || null;
+
+      chapters.push({
+        slug   : chapterSlug,
+        number : numParsed,
+        title  : numText,
+        date   : dateM ? dateM[1].trim() : '',
+        url    : chapterUrl,
+      });
+    }
   }
 
   return chapters.sort((a, b) => (b.number ?? 0) - (a.number ?? 0));
