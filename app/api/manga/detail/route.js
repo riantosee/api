@@ -1,24 +1,41 @@
 /**
- * app/api/manga/detail/[slug]/route.js
- * Detail manga — Komikstation only
+ * app/api/manga/detail/route.js
+ * Detail manga via query param — Komikstation only
  *
- * DETAIL:
- *   GET /api/manga/detail/naruto-sasukes-story-the-uchiha-and-the-heavenly-stardust
+ * Alternatif dari dynamic route /api/manga/detail/[slug]
+ * Menerima slug lewat query param sehingga lebih mudah di-test.
  *
- * Source : https://komikstation.org
- * URL    : https://komikstation.org/manga/{slug}/
+ * USAGE:
+ *   GET /api/manga/detail?slug=one-punch-man
+ *   GET /api/manga/detail?slug=naruto-sasukes-story-the-uchiha-and-the-heavenly-stardust
+ *
+ * Catatan:
+ *   - Slug harus pakai tanda hubung (-), bukan spasi
+ *   - Slug diambil dari URL komikstation: komikstation.org/manga/{slug}/
+ *   - Route ini identik dengan /api/manga/detail/[slug] — hanya beda cara input
  */
 
-import { cacheGet, cacheSet }            from '../../../../lib/cache.js';
-import { successResponse, errorResponse, gatewayError } from '../../../../lib/response-utils.js';
+import { cacheGet, cacheSet }                             from '../../../../lib/cache.js';
+import { successResponse, errorResponse, gatewayError }   from '../../../../lib/response-utils.js';
 
 // ─────────────────────────────────────────────────────────────────
 // ROUTE HANDLER
 // ─────────────────────────────────────────────────────────────────
 
-export async function GET(req, { params }) {
-  const slug = params?.slug?.trim();
-  if (!slug) return errorResponse(400, 'Parameter slug diperlukan.');
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+
+  // Normalisasi: "one punch man" → "one-punch-man"
+  const raw  = (searchParams.get('slug') || '').trim();
+  const slug = raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  if (!slug) {
+    return errorResponse(400, [
+      'Parameter "slug" diperlukan.',
+      'Contoh: /api/manga/detail?slug=one-punch-man',
+      'Atau gunakan path: /api/manga/detail/one-punch-man',
+    ].join(' '));
+  }
 
   const cacheKey = `manga:detail:komikstation:${slug}`;
   const hit = await cacheGet(cacheKey);
@@ -53,7 +70,7 @@ async function fetchHtml(targetUrl) {
     ? `http://api.scraperapi.com?api_key=${scraperKey}&url=${encodeURIComponent(targetUrl)}&render=false`
     : targetUrl;
 
-  const headers = scraperKey ? {} : BASE_HEADERS;
+  const headers  = scraperKey ? {} : BASE_HEADERS;
 
   const controller = new AbortController();
   const timer      = setTimeout(() => controller.abort(), 20000);
@@ -84,13 +101,9 @@ async function fetchDetailKomikstation(slug) {
 // ─────────────────────────────────────────────────────────────────
 
 function parseDetail(html, slug, url) {
-  // Prioritas 1: JSON-LD schema (paling akurat, struktur terstandar)
   const fromSchema = parseFromJsonLd(html);
-
-  // Prioritas 2: HTML meta & DOM
   const fromHtml   = parseFromHtml(html);
 
-  // Merge: schema sebagai base, HTML sebagai pelengkap
   const title         = fromSchema.title         || fromHtml.title         || slug;
   const thumbnail     = fromSchema.thumbnail     || fromHtml.thumbnail     || '';
   const synopsis      = fromHtml.synopsis        || fromSchema.description || '';
@@ -108,7 +121,7 @@ function parseDetail(html, slug, url) {
   const dateModified  = fromSchema.dateModified  || fromHtml.dateModified  || '';
 
   return {
-    id          : slug,
+    id            : slug,
     slug,
     url,
     title,
@@ -133,20 +146,12 @@ function parseDetail(html, slug, url) {
 
 // ─────────────────────────────────────────────────────────────────
 // PARSER 1 — JSON-LD Schema
-//
-// <script type="application/ld+json" class="yoast-schema-graph">
-//   { "@context":"https://schema.org", "@graph": [...] }
-// </script>
-//
-// Ambil: title, thumbnailUrl, datePublished, dateModified, description
 // ─────────────────────────────────────────────────────────────────
 
 function parseFromJsonLd(html) {
   const result = { title: '', thumbnail: '', datePublished: '', dateModified: '', description: '' };
 
-  const scriptM = html.match(
-    /<script[^>]+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi
-  );
+  const scriptM = html.match(/<script[^>]+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
   if (!scriptM) return result;
 
   for (const tag of scriptM) {
@@ -156,10 +161,8 @@ function parseFromJsonLd(html) {
       const graph = data['@graph'] || (Array.isArray(data) ? data : [data]);
 
       for (const node of graph) {
-        // WebPage node — ambil title & url
         if (node['@type'] === 'WebPage') {
           if (!result.title && node.name) {
-            // Hapus suffix " - KomikStation" atau " Bahasa Indonesia - KomikStation"
             result.title = node.name
               .replace(/\s*[-–]\s*(bahasa\s+indonesia\s*[-–]\s*)?komikstation\s*$/i, '')
               .trim();
@@ -167,22 +170,14 @@ function parseFromJsonLd(html) {
           if (!result.datePublished && node.datePublished) result.datePublished = node.datePublished;
           if (!result.dateModified  && node.dateModified)  result.dateModified  = node.dateModified;
         }
-
-        // ImageObject node — ambil thumbnailUrl
         if (node['@type'] === 'ImageObject') {
           if (!result.thumbnail && (node.url || node.contentUrl)) {
             result.thumbnail = node.url || node.contentUrl;
           }
         }
       }
-
-      // Jika ada field description di root
-      if (!result.description && data.description) {
-        result.description = data.description;
-      }
-    } catch {
-      // skip invalid JSON
-    }
+      if (!result.description && data.description) result.description = data.description;
+    } catch { /* skip */ }
   }
 
   return result;
@@ -190,59 +185,6 @@ function parseFromJsonLd(html) {
 
 // ─────────────────────────────────────────────────────────────────
 // PARSER 2 — HTML DOM
-//
-// Struktur halaman detail komikstation.org:
-//
-// [JUDUL ALTERNATIF]
-// <div class="wd-full">
-//   <b>Judul Alternatif</b>
-//   <span>Naruto: サスケ烈伝...</span>
-// </div>
-//
-// [SINOPSIS]
-// <div class="entry-content entry-content-single" itemprop="description">
-//   <p>Uchiha Sasuke menuju...</p>
-// </div>
-//
-// [INFO FMED]
-// <div class="fmed">
-//   <b>Terbitan</b> <span>2022</span>
-//   <b>Penulis</b>  <span>ESAKA Jun, Kishimoto Masashi</span>
-//   <b>Ilustrator</b> <span>KIMURA Shingo</span>
-//   <b>Edisi</b>    <span>Shounen Jump + (Shueisha)</span>
-//   <b>Rilisan Terakhir</b>
-//     <span><time itemprop="dateModified" datetime="2023-04-25T21:01:34+07:00">April 25, 2023</time></span>
-// </div>
-//
-// [GENRE]
-// <div class="wd-full">
-//   <b>Genre</b>
-//   <span class="mgen">
-//     <a href="https://komikstation.org/genres/action/" rel="tag">Action</a>
-//     <a href="https://komikstation.org/genres/adventure/" rel="tag">Adventure</a>
-//   </span>
-// </div>
-//
-// [SCORE]
-// <div class="num" itemprop="ratingValue">8.50</div>
-// <div class="votecount" itemprop="ratingCount">120</div>
-//
-// [STATUS & TYPE]
-// <div class="tsinfo">
-//   <div class="imptdt"><i>Completed</i></div>   ← status
-//   <div class="imptdt"><i>Manga</i></div>        ← type
-// </div>
-//
-// [THUMBNAIL]
-// <div class="thumb"><img src="https://.../cover.jpg" itemprop="image" /></div>
-//
-// [CHAPTER LIST]
-// <div class="eph-num">
-//   <a href="https://komikstation.org/manga/slug/chapter-1/">
-//     <span class="chapternum">Chapter 1</span>
-//     <span class="chapterdate">January 1, 2023</span>
-//   </a>
-// </div>
 // ─────────────────────────────────────────────────────────────────
 
 function parseFromHtml(html) {
@@ -265,7 +207,6 @@ function parseFromHtml(html) {
   };
 }
 
-// ── Title dari <h1> atau <title>
 function parseTitle(html) {
   const h1M = html.match(/<h1[^>]*class="[^"]*entry-title[^"]*"[^>]*>\s*([^<]+)\s*<\/h1>/i)
            || html.match(/<h1[^>]*itemprop="name"[^>]*>\s*([^<]+)\s*<\/h1>/i)
@@ -281,83 +222,51 @@ function parseTitle(html) {
   return '';
 }
 
-// ── Thumbnail dari <div class="thumb">
 function parseThumbnail(html) {
-  // 1. <div class="thumb"><img src="..." itemprop="image" />
   const thumbDivM = html.match(/<div\s+class="thumb"[^>]*>[\s\S]{0,300}?<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i);
   if (thumbDivM) return thumbDivM[1];
 
-  // 2. <img itemprop="image" src="...">
   const itempropM = html.match(/<img[^>]+itemprop="image"[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i)
                  || html.match(/<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]+itemprop="image"[^>]*/i);
   if (itempropM) return itempropM[1];
-
   return '';
 }
 
-// ── Judul alternatif dari <div class="wd-full"><b>Judul Alternatif</b><span>...</span>
 function parseAltTitles(html) {
-  const blockM = html.match(
-    /Judul\s+Alternatif<\/b>\s*<span[^>]*>([\s\S]*?)<\/span>/i
-  );
+  const blockM = html.match(/Judul\s+Alternatif<\/b>\s*<span[^>]*>([\s\S]*?)<\/span>/i);
   if (!blockM) return [];
-
-  return blockM[1]
-    .split(/[,،،，、;；\n]+/)
-    .map(s => s.trim())
-    .filter(Boolean);
+  return blockM[1].split(/[,،،，、;；\n]+/).map(s => s.trim()).filter(Boolean);
 }
 
-// ── Sinopsis dari <div class="entry-content" itemprop="description"><p>...</p>
 function parseSynopsis(html) {
-  const divM = html.match(
-    /<div[^>]+itemprop="description"[^>]*>([\s\S]*?)<\/div>/i
-  );
+  const divM = html.match(/<div[^>]+itemprop="description"[^>]*>([\s\S]*?)<\/div>/i);
   if (!divM) return '';
-
-  return divM[1]
-    .replace(/<[^>]+>/g, ' ')   // strip semua tag HTML
-    .replace(/\s{2,}/g, ' ')
-    .trim();
+  return divM[1].replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
 }
 
-// ── Authors dari <div class="fmed"><b>Penulis</b><span>...</span>
 function parseAuthors(html) {
   const m = html.match(/Penulis<\/b>\s*<span[^>]*>([\s\S]*?)<\/span>/i);
   if (!m) return [];
-  return m[1]
-    .replace(/<[^>]+>/g, '')
-    .split(/[,،،，、]+/)
-    .map(s => s.trim())
-    .filter(Boolean);
+  return m[1].replace(/<[^>]+>/g, '').split(/[,،،，、]+/).map(s => s.trim()).filter(Boolean);
 }
 
-// ── Illustrators dari <div class="fmed"><b>Ilustrator</b><span>...</span>
 function parseIllustrators(html) {
   const m = html.match(/Ilustrator<\/b>\s*<span[^>]*>([\s\S]*?)<\/span>/i);
   if (!m) return [];
-  return m[1]
-    .replace(/<[^>]+>/g, '')
-    .split(/[,،،，、]+/)
-    .map(s => s.trim())
-    .filter(Boolean);
+  return m[1].replace(/<[^>]+>/g, '').split(/[,،،，、]+/).map(s => s.trim()).filter(Boolean);
 }
 
-// ── Serialization/Edisi dari <b>Edisi</b><span>...</span>
 function parseSerialization(html) {
   const m = html.match(/Edisi<\/b>\s*<span[^>]*>([\s\S]*?)<\/span>/i);
   if (!m) return '';
   return m[1].replace(/<[^>]+>/g, '').trim();
 }
 
-// ── Status dari <div class="tsinfo"><div class="imptdt"><i>Completed</i>
 function parseStatus(html) {
   const tsM = html.match(/<div\s+class="tsinfo"[^>]*>([\s\S]*?)<\/div>/i);
   if (!tsM) return '';
-
-  const iMatches = [...tsM[1].matchAll(/<i[^>]*>([^<]+)<\/i>/gi)];
-  // Status biasanya: Ongoing, Completed, Hiatus, dll (bukan tipe manga)
   const typeKeywords = /^(manga|manhwa|manhua|webtoon|novel)$/i;
+  const iMatches = [...tsM[1].matchAll(/<i[^>]*>([^<]+)<\/i>/gi)];
   for (const im of iMatches) {
     const val = im[1].trim();
     if (!typeKeywords.test(val)) return val;
@@ -365,11 +274,9 @@ function parseStatus(html) {
   return '';
 }
 
-// ── Type dari <div class="tsinfo"> — Manga / Manhwa / Manhua / dll
 function parseType(html) {
   const tsM = html.match(/<div\s+class="tsinfo"[^>]*>([\s\S]*?)<\/div>/i);
   if (!tsM) return 'Manga';
-
   const typeKeywords = /^(manga|manhwa|manhua|webtoon|novel)$/i;
   const iMatches = [...tsM[1].matchAll(/<i[^>]*>([^<]+)<\/i>/gi)];
   for (const im of iMatches) {
@@ -379,21 +286,18 @@ function parseType(html) {
   return 'Manga';
 }
 
-// ── Score dari <div class="num" itemprop="ratingValue">
 function parseScore(html) {
   const m = html.match(/<div[^>]+itemprop="ratingValue"[^>]*>\s*([0-9.]+)\s*<\/div>/i)
          || html.match(/itemprop="ratingValue"[^>]*>\s*([0-9.]+)/i);
   return m ? parseFloat(m[1]) || null : null;
 }
 
-// ── Total votes dari <div class="votecount" itemprop="ratingCount">
 function parseTotalVotes(html) {
   const m = html.match(/<[^>]+itemprop="ratingCount"[^>]*>\s*([0-9,]+)\s*</i)
          || html.match(/itemprop="ratingCount"[^>]*>\s*([0-9,]+)/i);
   return m ? parseInt(m[1].replace(/,/g, ''), 10) || null : null;
 }
 
-// ── Genres dari <span class="mgen"><a href="...">Genre</a>...
 function parseGenres(html) {
   const mgenM = html.match(/<span\s+class="mgen"[^>]*>([\s\S]*?)<\/span>/i);
   if (!mgenM) return [];
@@ -402,37 +306,20 @@ function parseGenres(html) {
   const linkRE = /<a\s+href="(https?:\/\/komikstation\.org\/genres\/([^/"]+)\/?)"[^>]*>([^<]+)<\/a>/gi;
   let m;
   while ((m = linkRE.exec(mgenM[1])) !== null) {
-    genres.push({
-      name : m[3].trim(),
-      slug : m[2].trim(),
-      url  : m[1],
-    });
+    genres.push({ name: m[3].trim(), slug: m[2].trim(), url: m[1] });
   }
   return genres;
 }
 
-// ── Date published dari <div class="fmed"><b>Terbitan</b><span>2022</span>
 function parseDatePublished(html) {
   const m = html.match(/Terbitan<\/b>\s*<span[^>]*>\s*([^<]+?)\s*<\/span>/i);
   return m ? m[1].trim() : '';
 }
 
-// ── Date modified dari <time itemprop="dateModified" datetime="...">
 function parseDateModified(html) {
   const m = html.match(/<time[^>]+itemprop="dateModified"[^>]+datetime="([^"]+)"[^>]*>/i);
   return m ? m[1].trim() : '';
 }
-
-// ─────────────────────────────────────────────────────────────────
-// CHAPTER LIST
-//
-// <div class="eph-num">
-//   <a href="https://komikstation.org/manga/slug/chapter-1/">
-//     <span class="chapternum">Chapter 1</span>
-//     <span class="chapterdate">January 1, 2023</span>
-//   </a>
-// </div>
-// ─────────────────────────────────────────────────────────────────
 
 function parseChapters(html) {
   const chapters = [];
@@ -441,32 +328,26 @@ function parseChapters(html) {
 
   while ((block = ephRE.exec(html)) !== null) {
     const content = block[1];
-
-    const linkM = content.match(
+    const linkM   = content.match(
       /<a\s+href="(https?:\/\/komikstation\.org\/manga\/[^/]+\/([^/"]+)\/?)"/i
     );
     if (!linkM) continue;
 
     const chapterUrl  = linkM[1];
     const chapterSlug = linkM[2];
-
-    const numM  = content.match(/<span\s+class="chapternum"[^>]*>\s*([^<]+?)\s*<\/span>/i);
-    const dateM = content.match(/<span\s+class="chapterdate"[^>]*>\s*([^<]+?)\s*<\/span>/i);
-
-    // Parse nomor chapter dari slug atau teks (misal "Chapter 46" → 46)
-    const numText    = numM  ? numM[1].trim()  : chapterSlug;
-    const dateText   = dateM ? dateM[1].trim() : '';
-    const numParsed  = parseFloat(numText.replace(/[^0-9.]/g, '')) || null;
+    const numM        = content.match(/<span\s+class="chapternum"[^>]*>\s*([^<]+?)\s*<\/span>/i);
+    const dateM       = content.match(/<span\s+class="chapterdate"[^>]*>\s*([^<]+?)\s*<\/span>/i);
+    const numText     = numM ? numM[1].trim() : chapterSlug;
+    const numParsed   = parseFloat(numText.replace(/[^0-9.]/g, '')) || null;
 
     chapters.push({
       slug   : chapterSlug,
       number : numParsed,
       title  : numText,
-      date   : dateText,
+      date   : dateM ? dateM[1].trim() : '',
       url    : chapterUrl,
     });
   }
 
-  // Urutkan: chapter terbesar (terbaru) di atas
   return chapters.sort((a, b) => (b.number ?? 0) - (a.number ?? 0));
 }
