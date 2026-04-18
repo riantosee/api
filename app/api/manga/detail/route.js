@@ -9,8 +9,8 @@
  * URL    : https://komikstation.org/manga/{slug}/
  */
 
-import { cacheGet, cacheSet }            from '../../../../../lib/cache.js';
-import { successResponse, errorResponse, gatewayError } from '../../../../../lib/response-utils.js';
+import { cacheGet, cacheSet }            from '../../../../lib/cache.js';
+import { successResponse, errorResponse, gatewayError } from '../../../../lib/response-utils.js';
 
 // ─────────────────────────────────────────────────────────────────
 // ROUTE HANDLER
