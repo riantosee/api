@@ -1,12 +1,12 @@
 /**
- * app/api/manga/search/route.js
- * Search manga — Komikstation only
+ * app/api/anime/search/route.js
+ * Search anime — Samehadaku only
  *
  * SEARCH:
- *   GET /api/manga/search?q=Naruto
- *   GET /api/manga/search?q=Naruto&page=2
+ *   GET /api/anime/search?q=Naruto
+ *   GET /api/anime/search?q=Naruto&page=2
  *
- * Source: https://komikstation.org
+ * Source: https://v2.samehadaku.how
  */
 
 import { cacheGet, cacheSet }                           from '../../../../lib/cache.js';
@@ -23,17 +23,17 @@ export async function GET(req) {
 
   if (!query) return errorResponse(400, 'Parameter "q" diperlukan. Contoh: ?q=Naruto');
 
-  const cacheKey = `manga:search:komikstation:${query.toLowerCase()}:${page}`;
+  const cacheKey = `anime:search:samehadaku:${query.toLowerCase()}:${page}`;
   const hit = await cacheGet(cacheKey);
   if (hit) return successResponse(hit, { fromCache: true });
 
   try {
-    const results = await searchKomikstation(query, page);
-    const payload = { query, page, source: 'komikstation', total: results.length, results };
+    const results = await searchSamehadaku(query, page);
+    const payload = { query, page, source: 'samehadaku', total: results.length, results };
     await cacheSet(cacheKey, payload, 300);
     return successResponse(payload);
   } catch (err) {
-    console.error('[manga/search][komikstation]', err.message);
+    console.error('[anime/search][samehadaku]', err.message);
     return gatewayError(`Gagal mengambil hasil pencarian: ${err.message}`);
   }
 }
@@ -45,7 +45,7 @@ export async function GET(req) {
 const BASE_HEADERS = {
   'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
   'Accept'     : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-  'Referer'    : 'https://komikstation.org/',
+  'Referer'    : 'https://v2.samehadaku.how/',
 };
 
 async function fetchHtml(targetUrl) {
@@ -55,7 +55,7 @@ async function fetchHtml(targetUrl) {
     ? `http://api.scraperapi.com?api_key=${scraperKey}&url=${encodeURIComponent(targetUrl)}&render=false`
     : targetUrl;
 
-  const headers  = scraperKey ? {} : BASE_HEADERS;
+  const headers = scraperKey ? {} : BASE_HEADERS;
 
   const controller = new AbortController();
   const timer      = setTimeout(() => controller.abort(), 20000);
@@ -70,157 +70,160 @@ async function fetchHtml(targetUrl) {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// SEARCH — https://komikstation.org/?s=query
+// SEARCH — https://v2.samehadaku.how/?s=query&page=N
 // ─────────────────────────────────────────────────────────────────
 
-async function searchKomikstation(query, page) {
-  const target = new URL('https://komikstation.org/');
+async function searchSamehadaku(query, page) {
+  const target = new URL('https://v2.samehadaku.how/');
   target.searchParams.set('s', query);
   if (page > 1) target.searchParams.set('page', page);
 
   const html = await fetchHtml(target.toString());
-  return parseKomikstationHtml(html);
+  return parseSamehadakuHtml(html);
 }
 
 // ─────────────────────────────────────────────────────────────────
-// HTML PARSER — struktur bsx dari komikstation.org
+// HTML PARSER — struktur animepost dari v2.samehadaku.how
 //
-// <div class="bs">
-//   <div class="bsx">
-//     <a href="https://komikstation.org/manga/slug/" title="Judul">
-//       <div class="limit">
-//         <span class="type Manga">Manga</span>
-//         <noscript><img src="https://.../cover.jpg" /></noscript>
-//         <img data-src="https://.../cover.jpg" class="lazyload ..." />
-//       </div>
-//       <div class="bigor">
-//         <div class="tt"> Judul</div>
-//         <div class="adds">
-//           <div class="epxs">Chapter 46</div>
-//           <div class="rt">
-//             <div class="numscore">10</div>
-//           </div>
+// <article id="post-37451" class="animpost post-37451 ...">
+//   <div class="animepost">
+//     <div class="animosx">
+//       <a rel="37451" href="https://v2.samehadaku.how/anime/slug/">
+//         <div class="content-thumb">
+//           <div class="ply"><i class="fa fa-play"></i></div>
+//           <img src="https://v2.samehadaku.how/.../cover.jpg" />
+//           <div class="score"><i class="...fa-star"></i> 7.5</div>
 //         </div>
-//         <div class="titleheading"><h2>Judul</h2></div>
+//         <div class="data">
+//           <div class="title"><h2>Judul Anime</h2></div>
+//           <div class="type">Completed</div>
+//         </div>
+//       </a>
+//     </div>
+//     <div class="stooltip">
+//       <div class="title"><h4>Judul Anime</h4></div>
+//       <div class="metadata"><span class="skor">...</span></div>
+//       <div class="ttls">Synopsis singkat...</div>
+//       <div class="genres">
+//         <div class="mta"><a href="...">Action</a> ...</div>
 //       </div>
-//     </a>
+//     </div>
 //   </div>
-// </div>
+// </article>
 // ─────────────────────────────────────────────────────────────────
 
-function parseKomikstationHtml(html) {
+function parseSamehadakuHtml(html) {
   if (!html || typeof html !== 'string') return [];
 
   const results = [];
-  const bsxRE = /<div\s+class="bsx">([\s\S]*?)(?=<div\s+class="bsx"|$)/gi;
+
+  // Pisahkan per <article class="animpost ...">
+  const articleRE = /<article\s[^>]*class="[^"]*animpost[^"]*"[^>]*>([\s\S]*?)<\/article>/gi;
   let block;
 
-  while ((block = bsxRE.exec(html)) !== null) {
-    const item = parseKomikstationItem(block[1]);
+  while ((block = articleRE.exec(html)) !== null) {
+    const item = parseSamehadakuItem(block[1]);
     if (item) results.push(item);
   }
 
-  return results.length > 0 ? results : parseKomikstationFallback(html);
+  return results.length > 0 ? results : parseSamehadakuFallback(html);
 }
 
-function parseKomikstationItem(content) {
-  // ── URL & title dari tag <a href=".../manga/slug/" title="...">
+function parseSamehadakuItem(content) {
+  // ── URL & rel (id) dari tag <a rel="ID" href="...">
   const linkMatch = content.match(
-    /<a\s+href="(https?:\/\/komikstation\.org\/manga\/([^/"]+)\/?)"(?:[^>]*\btitle="([^"]*)")?[^>]*>/i
+    /<a\s+rel="(\d+)"\s+href="(https?:\/\/v2\.samehadaku\.how\/anime\/([^/"]+)\/?)"[^>]*>/i
   );
   if (!linkMatch) return null;
 
-  const url  = linkMatch[1];
-  const slug = linkMatch[2] || '';
-  // Skip halaman paginasi /manga/page/N/
-  if (/^page$/i.test(slug)) return null;
+  const animeId = linkMatch[1] || '';
+  const url     = linkMatch[2];
+  const slug    = linkMatch[3] || '';
 
-  // Prioritas judul: atribut title="" → <div class="tt"> → <h2>
-  let title = (linkMatch[3] || '').trim();
-  if (!title) {
-    const ttM = content.match(/<div\s+class="tt"[^>]*>\s*([^<]+?)\s*<\/div>/i)
-             || content.match(/<h2[^>]*>\s*([^<]+?)\s*<\/h2>/i);
-    title = ttM ? ttM[1].trim() : slug;
-  }
+  // ── Judul: prioritas <div class="title"><h2> → <div class="stooltip"> h4
+  const h2Match  = content.match(/<div\s+class="title"[^>]*>\s*<h2[^>]*>\s*([^<]+?)\s*<\/h2>/i);
+  const h4Match  = content.match(/<div\s+class="stooltip"[\s\S]*?<h4[^>]*>\s*([^<]+?)\s*<\/h4>/i);
+  const title    = (h2Match?.[1] || h4Match?.[1] || slug).trim();
   if (!title) return null;
 
-  // ── Thumbnail
-  // 1. <noscript><img src="..."> — gambar asli tanpa lazy load
-  // 2. <img data-src="...">     — lazy load
-  // 3. <img src="...komikstation..."> — fallback
-  const noscriptM = content.match(/<noscript>[\s\S]*?<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*>/i);
-  const dataSrcM  = content.match(/<img[^>]+data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i);
-  const srcM      = content.match(/<img[^>]+src="(https?:\/\/komikstation\.org\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i);
-  const thumbnail = (noscriptM || dataSrcM || srcM)?.[1] || '';
+  // ── Thumbnail: <img src="..."> dalam div.content-thumb
+  const imgMatch  = content.match(/<div\s+class="content-thumb"[^>]*>[\s\S]*?<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i);
+  const thumbnail = imgMatch?.[1] || '';
 
-  // ── Chapter terakhir: <div class="epxs">Chapter 46</div>
-  const chapterM    = content.match(/<div\s+class="epxs"[^>]*>\s*([^<]+?)\s*<\/div>/i);
-  const lastChapter = chapterM ? chapterM[1].trim() : '';
+  // ── Score: <div class="score">...<i ...></i> 7.5</div>
+  const scoreMatch = content.match(/<div\s+class="score"[^>]*>[\s\S]*?<\/i>\s*([\d.]+)\s*<\/div>/i);
+  const score      = scoreMatch ? parseFloat(scoreMatch[1]) || null : null;
 
-  // ── Score: <div class="numscore">10</div>
-  const scoreM = content.match(/<div\s+class="numscore"[^>]*>\s*([^<]+?)\s*<\/div>/i);
-  const score  = scoreM ? parseFloat(scoreM[1].trim()) || null : null;
+  // ── Status/Type: <div class="type">Completed</div>
+  const typeMatch = content.match(/<div\s+class="type"[^>]*>\s*([^<]+?)\s*<\/div>/i);
+  const status    = typeMatch ? typeMatch[1].trim() : '';
 
-  // ── Tipe: <span class="type Manga"> / Manhwa / Manhua dll
-  const typeM = content.match(/<span\s+class="type\s+([^"]+)"[^>]*>([^<]*)<\/span>/i);
-  const type  = typeM ? (typeM[2].trim() || typeM[1].trim()) : 'Manga';
+  // ── Synopsis: <div class="ttls">...</div> dalam stooltip
+  const synopsisMatch = content.match(/<div\s+class="ttls"[^>]*>\s*([\s\S]*?)\s*<\/div>/i);
+  const synopsis      = synopsisMatch ? synopsisMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+
+  // ── Genres: <div class="genres"><div class="mta"><a>Genre</a>...
+  const genresMatch = content.match(/<div\s+class="genres"[^>]*>([\s\S]*?)<\/div>\s*<\/div>/i);
+  const genres      = [];
+  if (genresMatch) {
+    const genreRE = /<a[^>]*>([^<]+)<\/a>/gi;
+    let gm;
+    while ((gm = genreRE.exec(genresMatch[1])) !== null) {
+      genres.push(gm[1].trim());
+    }
+  }
 
   return {
-    id          : slug,
+    id          : animeId || slug,
     title,
     slug,
     url,
     thumbnail,
-    type,
-    lastChapter,
+    type        : 'Anime',
+    status,
     score,
+    synopsis,
+    genres,
     author      : '',
-    genres      : [],
-    synopsis    : '',
-    status      : '',
     year        : null,
   };
 }
 
-function parseKomikstationFallback(html) {
-  // Fallback minimal: scan semua link /manga/slug/
+function parseSamehadakuFallback(html) {
+  // Fallback minimal: scan semua link /anime/slug/
   const results = [];
   const seen    = new Set();
-  const linkRE  = /<a\s+href="(https?:\/\/komikstation\.org\/manga\/([^/"?#]+)\/?)"(?:[^>]*\btitle="([^"]*)")?[^>]*>/gi;
+  const linkRE  = /<a\s+(?:rel="\d+"\s+)?href="(https?:\/\/v2\.samehadaku\.how\/anime\/([^/"?#]+)\/?)"[^>]*>/gi;
   let m;
 
   while ((m = linkRE.exec(html)) !== null) {
     const url  = m[1];
     const slug = m[2];
     if (!slug || seen.has(url)) continue;
-    if (/^page$/i.test(slug)) continue;
     seen.add(url);
 
-    const title = (m[3] || '').trim() || slug;
-
-    // Thumbnail: cari di area sebelum/sesudah link
+    // Thumbnail: cari di area sekitar link
     const before    = html.slice(Math.max(0, m.index - 800), m.index);
-    const noscriptM = before.match(/<noscript>[\s\S]*?<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*>/i);
-    const dataSrcM  = before.match(/<img[^>]+data-src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i);
-    const thumbnail = (noscriptM || dataSrcM)?.[1] || '';
+    const imgMatch  = before.match(/<img[^>]+src="(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)(?:\?[^"]*)?)"[^>]*/i);
+    const thumbnail = imgMatch?.[1] || '';
 
-    const after    = html.slice(m.index, m.index + 500);
-    const chapterM = after.match(/<div\s+class="epxs"[^>]*>\s*([^<]+?)\s*<\/div>/i);
-    const scoreM   = after.match(/<div\s+class="numscore"[^>]*>\s*([^<]+?)\s*<\/div>/i);
+    const after      = html.slice(m.index, m.index + 600);
+    const h2Match    = after.match(/<h2[^>]*>\s*([^<]+?)\s*<\/h2>/i);
+    const typeMatch  = after.match(/<div\s+class="type"[^>]*>\s*([^<]+?)\s*<\/div>/i);
+    const scoreMatch = after.match(/<div\s+class="score"[^>]*>[\s\S]*?<\/i>\s*([\d.]+)/i);
 
     results.push({
       id          : slug,
-      title,
+      title       : (h2Match?.[1] || slug).trim(),
       slug,
       url,
       thumbnail,
-      type        : 'Manga',
-      lastChapter : chapterM ? chapterM[1].trim() : '',
-      score       : scoreM   ? parseFloat(scoreM[1].trim()) || null : null,
-      author      : '',
-      genres      : [],
+      type        : 'Anime',
+      status      : typeMatch ? typeMatch[1].trim() : '',
+      score       : scoreMatch ? parseFloat(scoreMatch[1]) || null : null,
       synopsis    : '',
-      status      : '',
+      genres      : [],
+      author      : '',
       year        : null,
     });
   }
