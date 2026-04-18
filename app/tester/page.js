@@ -22,6 +22,7 @@ const PRESETS = [
     { label: 'Search Manga',   method: 'GET', path: '/api/manga/search',   params: 'q=naruto' },
 { label: 'Latest Manga',   method: 'GET', path: '/api/manga/latest',   params: 'page=1' },
 { label: 'Popular Manga',   method: 'GET', path: '/api/manga/popular',   params: 'page=1' },
+{ label: 'New Series Manga',   method: 'GET', path: '/api/manga/new',   params: 'page=1' },
   ]},
   { g: 'manhua',  label: 'Manhua',  items: [
     { label: 'Search Manhua/Manhwa',  method: 'GET', path: '/api/manhua/search',  params: 'q=solo leveling' },
