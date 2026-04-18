@@ -24,7 +24,7 @@ const PRESETS = [
 { label: 'Popular Manga',   method: 'GET', path: '/api/manga/popular',   params: 'page=1' },
 { label: 'New Series Manga',   method: 'GET', path: '/api/manga/new',   params: 'page=1' },
 { label: 'List Genre Manga',   method: 'GET', path: '/api/manga/listgenre',   params: '' },
-{ label: 'A-Z Manga',   method: 'GET', path: '/api/manga/listgenre',   params: 'page=1' },
+{ label: 'A-Z Manga',   method: 'GET', path: '/api/manga/az',   params: 'page=1' },
   ]},
   { g: 'manhua',  label: 'Manhua',  items: [
     { label: 'Search Manhua/Manhwa',  method: 'GET', path: '/api/manhua/search',  params: 'q=solo leveling' },
