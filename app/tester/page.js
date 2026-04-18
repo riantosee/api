@@ -15,8 +15,9 @@ const CAT_BG = {
 /* ── Preset list ─────────────────────────────────────────────── */
 const PRESETS = [
   { g: 'anime',   label: 'Anime',   items: [
-    { label: 'Search Anime',   method: 'GET', path: '/api/anime/search',   params: 'q=naruto\nprovider=jikan-anime\npage=1' },
+    { label: 'Search Anime',   method: 'GET', path: '/api/anime/search',   params: 'q=naruto' },
     { label: 'Latest Episode Anime', method: 'GET', path: '/api/anime/latest', params: 'page=1' },
+{ label: 'Popular Anime', method: 'GET', path: '/api/anime/popular', params: 'page=1' },
   ]},
   { g: 'manga',   label: 'Manga',   items: [
     { label: 'Search Manga',   method: 'GET', path: '/api/manga/search',   params: 'q=naruto' },
