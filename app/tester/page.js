@@ -17,7 +17,8 @@ const PRESETS = [
   { g: 'anime',   label: 'Anime',   items: [
     { label: 'Search Anime',   method: 'GET', path: '/api/anime/search',   params: 'q=naruto' },
     { label: 'Latest Episode Anime', method: 'GET', path: '/api/anime/latest', params: 'page=1' },
-{ label: 'Popular Anime', method: 'GET', path: '/api/anime/popular', params: 'page=1' },
+{ label: 'Popular Anime', method: 'GET', path: '/api/anime/popular', params: '' },
+{ label: 'List Genre Anime', method: 'GET', path: '/api/anime/listgenre', params: '' },
   ]},
   { g: 'manga',   label: 'Manga',   items: [
     { label: 'Search Manga',   method: 'GET', path: '/api/manga/search',   params: 'q=naruto' },
