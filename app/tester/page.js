@@ -26,6 +26,7 @@ const PRESETS = [
 { label: 'List Genre Manga',   method: 'GET', path: '/api/manga/listgenre',   params: '' },
 { label: 'A-Z Manga',   method: 'GET', path: '/api/manga/az',   params: 'page=1' },
 { label: 'Detail Manga',   method: 'GET', path: '/api/manga/detail',   params: 'slug=one punch man' },
+{ label: 'Read Manga',   method: 'GET', path: '/api/manga/read',   params: 'slug=one-punch-man-chapter-228' },
   ]},
   { g: 'manhua',  label: 'Manhua',  items: [
     { label: 'Search Manhua/Manhwa',  method: 'GET', path: '/api/manhua/search',  params: 'q=solo leveling' },
