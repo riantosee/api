@@ -237,3 +237,4 @@ function parseSamehadakuPopularFallback(html) {
 
   return results;
 }
+
