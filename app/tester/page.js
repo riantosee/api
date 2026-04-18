@@ -16,7 +16,7 @@ const CAT_BG = {
 const PRESETS = [
   { g: 'anime',   label: 'Anime',   items: [
     { label: 'Search Anime',   method: 'GET', path: '/api/anime/search',   params: 'q=naruto\nprovider=jikan-anime\npage=1' },
-    { label: 'Trending Anime', method: 'GET', path: '/api/anime/trending', params: 'provider=jikan-anime' },
+    { label: 'Latest Episode Anime', method: 'GET', path: '/api/anime/latest', params: 'page=1' },
   ]},
   { g: 'manga',   label: 'Manga',   items: [
     { label: 'Search Manga',   method: 'GET', path: '/api/manga/search',   params: 'q=naruto' },
