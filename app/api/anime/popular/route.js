@@ -76,15 +76,13 @@ async function fetchHtml(targetUrl) {
 // ─────────────────────────────────────────────────────────────────
 
 async function fetchPopularSamehadaku(page) {
-  // page 1 → /daftar-anime-2/ (base URL-nya sudah page 2 di situs)
-  // tapi kita normalisasi: page=1 → /daftar-anime-2/, page=2 → /daftar-anime-3/, dst.
-  // Sesuaikan offset jika ternyata page=1 → /daftar-anime-1/
-  const pathPage = page + 1; // /daftar-anime-2/ adalah halaman pertama popular
-  const target   = new URL(`https://v2.samehadaku.how/daftar-anime-${pathPage}/`);
+  // Path tetap /daftar-anime-2/, halaman berikutnya pakai ?page=N
+  const target = new URL('https://v2.samehadaku.how/daftar-anime-2/');
   target.searchParams.set('title', '');
   target.searchParams.set('status', '');
   target.searchParams.set('type', '');
   target.searchParams.set('order', 'popular');
+  if (page > 1) target.searchParams.set('page', page);
 
   const html = await fetchHtml(target.toString());
   return parseSamehadakuPopular(html);
