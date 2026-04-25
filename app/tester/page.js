@@ -21,6 +21,7 @@ const PRESETS = [
 { label: 'List Genre Anime', method: 'GET', path: '/api/anime/listgenre', params: '' },
 { label: 'Jadwalrilis Anime', method: 'GET', path: '/api/anime/schedule', params: 'day=monday' },
 { label: 'Batch Anime', method: 'GET', path: '/api/anime/batch', params: 'page=1' },
+{ label: 'Detail Anime', method: 'GET', path: '/api/anime/detail', params: 'slug=one-punch-man' },
   ]},
   { g: 'manga',   label: 'Manga',   items: [
     { label: 'Search Manga',   method: 'GET', path: '/api/manga/search',   params: 'q=naruto' },
