@@ -1,6 +1,6 @@
 /**
  * app/api/anime/detail/debug/route.js
- * DEBUG — lihat raw HTML snippet dari halaman detail anime
+ * DEBUG v2 — fokus ke area infoanime & episode list
  * HAPUS setelah selesai debug!
  *
  * GET /api/anime/detail/debug?slug=one-punch-man
@@ -27,34 +27,28 @@ export async function GET(req) {
 
   const html = await res.text();
 
-  const checks = {
-    status          : res.status,
-    html_length     : html.length,
-    has_infoanime   : html.includes('infoanime'),
-    has_spe         : html.includes('"spe"'),
-    has_rinfobox    : html.includes('rinfobox'),
-    has_entry_title : html.includes('entry-title'),
-    has_synops      : html.includes('synops'),
-    has_thumbinal   : html.includes('thumbinal'),
-    has_episodelist : html.includes('episodelist'),
-    has_eplister    : html.includes('eplister'),
-    has_eplist      : html.includes('eplist'),
-    has_episodes    : html.includes('episodes'),
-    has_episodio    : html.includes('episodio'),
-    has_wp_manga    : html.includes('wp-manga'),
-  };
+  // Snippet dari infoanime — info utama anime
+  const infoIdx    = html.indexOf('infoanime');
+  const infoSnippet = infoIdx > -1
+    ? html.slice(infoIdx - 50, infoIdx + 4000)
+    : 'NOT FOUND';
 
-  // Snippet area konten utama — cari dari div#content
-  const contentIdx = html.indexOf('id="content"');
-  const snippet    = contentIdx > -1
-    ? html.slice(contentIdx, contentIdx + 5000)
-    : html.slice(2000, 7000);
+  // Snippet dari "spe" — kemungkinan tabel spesifikasi
+  const speIdx     = html.indexOf('"spe"');
+  const speSnippet = speIdx > -1
+    ? html.slice(speIdx - 50, speIdx + 3000)
+    : 'NOT FOUND';
 
-  // Snippet area episode list
-  const epIdx    = ['episodelist', 'eplister', 'eplist', 'episodes']
-    .map(k => html.indexOf(k))
-    .find(i => i > -1) ?? -1;
-  const epSnippet = epIdx > -1 ? html.slice(epIdx - 100, epIdx + 2000) : null;
+  // Cari semua class/id yang ada di HTML — bantu identifikasi struktur episode
+  const classMatches = [...html.matchAll(/class="([^"]{3,40})"/g)]
+    .map(m => m[1].split(/\s+/)[0])
+    .filter(c => /ep|eps|list|episode|lis|epl/i.test(c));
+  const uniqueEpClasses = [...new Set(classMatches)];
 
-  return Response.json({ checks, snippet, epSnippet });
+  return Response.json({
+    status        : res.status,
+    infoSnippet,
+    speSnippet,
+    uniqueEpClasses, // class yang mengandung kata ep/episode/list
+  });
 }
