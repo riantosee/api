@@ -12,13 +12,16 @@
 import { cacheGet, cacheSet }                           from '../../../../lib/cache.js';
 import { successResponse, errorResponse, gatewayError } from '../../../../lib/response-utils.js';
 
+export const dynamic = 'force-dynamic';
+
 // ─────────────────────────────────────────────────────────────────
 // ROUTE HANDLER
 // ─────────────────────────────────────────────────────────────────
 
-export async function GET(req, { params }) {
-  const slug = (params.slug || '').trim().toLowerCase();
-  if (!slug) return errorResponse(400, 'Slug tidak boleh kosong');
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const slug = (searchParams.get('slug') || '').trim().toLowerCase();
+  if (!slug) return errorResponse(400, 'Parameter "slug" diperlukan. Contoh: ?slug=one-punch-man');
 
   const cacheKey = `anime:detail:samehadaku:${slug}`;
   const hit = await cacheGet(cacheKey);
