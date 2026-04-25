@@ -5,7 +5,7 @@
  * DETAIL:
  *   GET /api/anime/detail/one-punch-man
  *   GET /api/anime/detail/naruto
- *
+ *b
  * Source: https://v2.samehadaku.how/anime/{slug}/
  */
 
