@@ -23,6 +23,7 @@ const PRESETS = [
 { label: 'Batch Anime', method: 'GET', path: '/api/anime/batch', params: 'page=1' },
 { label: 'Detail Anime', method: 'GET', path: '/api/anime/detail', params: 'slug=one-punch-man' },
 { label: 'Watch Anime', method: 'GET', path: '/api/anime/watch', params: 'slug=one-punch-man-episode-12' },
+{ label: 'Watch Anime', method: 'GET', path: '/api/anime/test', params: 'slug=one-punch-man-episode-12' },
   ]},
   { g: 'manga',   label: 'Manga',   items: [
     { label: 'Search Manga',   method: 'GET', path: '/api/manga/search',   params: 'q=naruto' },
