@@ -100,8 +100,8 @@ const CATEGORIES = [
     versions: [
       {
         id      : 'donghua-v1',
-        label   : 'v1 · Kuramanime',
-        provider: 'kuramanime',
+        label   : 'v1 · donghuafilm',
+        provider: 'donghuafilm',
         items   : [
           { label: 'Search',   method: 'GET', path: '/api/donghua/search',   params: 'q=battle through the heavens' },
           { label: 'Latest',   method: 'GET', path: '/api/donghua/latest',   params: '' },
