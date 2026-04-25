@@ -1,8 +1,6 @@
 /**
  * app/api/anime/detail/debug/route.js
- * DEBUG v2 — fokus ke area infoanime & episode list
- * HAPUS setelah selesai debug!
- *
+ * DEBUG v3 — fokus ke area episode list
  * GET /api/anime/detail/debug?slug=one-punch-man
  */
 
@@ -27,28 +25,23 @@ export async function GET(req) {
 
   const html = await res.text();
 
-  // Snippet dari infoanime — info utama anime
-  const infoIdx    = html.indexOf('infoanime');
-  const infoSnippet = infoIdx > -1
-    ? html.slice(infoIdx - 50, infoIdx + 4000)
+  // Snippet lstepsiode — list episode utama
+  const lstIdx     = html.indexOf('lstepsiode');
+  const lstSnippet = lstIdx > -1
+    ? html.slice(lstIdx - 100, lstIdx + 3000)
     : 'NOT FOUND';
 
-  // Snippet dari "spe" — kemungkinan tabel spesifikasi
-  const speIdx     = html.indexOf('"spe"');
-  const speSnippet = speIdx > -1
-    ? html.slice(speIdx - 50, speIdx + 3000)
+  // Snippet list-custom-url — kemungkinan link episode
+  const lcuIdx     = html.indexOf('list-custom-url');
+  const lcuSnippet = lcuIdx > -1
+    ? html.slice(lcuIdx - 100, lcuIdx + 2000)
     : 'NOT FOUND';
 
-  // Cari semua class/id yang ada di HTML — bantu identifikasi struktur episode
-  const classMatches = [...html.matchAll(/class="([^"]{3,40})"/g)]
-    .map(m => m[1].split(/\s+/)[0])
-    .filter(c => /ep|eps|list|episode|lis|epl/i.test(c));
-  const uniqueEpClasses = [...new Set(classMatches)];
+  // Snippet eps
+  const epsIdx     = html.indexOf('"eps"');
+  const epsSnippet = epsIdx > -1
+    ? html.slice(epsIdx - 100, epsIdx + 2000)
+    : 'NOT FOUND';
 
-  return Response.json({
-    status        : res.status,
-    infoSnippet,
-    speSnippet,
-    uniqueEpClasses, // class yang mengandung kata ep/episode/list
-  });
+  return Response.json({ lstSnippet, lcuSnippet, epsSnippet });
 }
