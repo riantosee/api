@@ -3,7 +3,6 @@ import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '../../components/layout/Navbar';
 
-/* ── Category → background image mapping ─────────────────────── */
 const CAT_BG = {
   anime:   'https://files.catbox.moe/7ipdhn.jpg',
   manga:   'https://files.catbox.moe/r404th.jpg',
@@ -12,51 +11,50 @@ const CAT_BG = {
   system:  null,
 };
 
-/* ── Preset list ─────────────────────────────────────────────── */
 const PRESETS = [
   { g: 'anime',   label: 'Anime',   items: [
-    { label: 'Search Anime',   method: 'GET', path: '/api/anime/search',   params: 'q=naruto' },
-    { label: 'Latest Episode Anime', method: 'GET', path: '/api/anime/latest', params: 'page=1' },
-{ label: 'Popular Anime', method: 'GET', path: '/api/anime/popular', params: '' },
-{ label: 'List Genre Anime', method: 'GET', path: '/api/anime/listgenre', params: '' },
-{ label: 'Jadwalrilis Anime', method: 'GET', path: '/api/anime/schedule', params: 'day=monday' },
-{ label: 'Batch Anime', method: 'GET', path: '/api/anime/batch', params: 'page=1' },
-{ label: 'Detail Anime', method: 'GET', path: '/api/anime/detail', params: 'slug=one-punch-man' },
-{ label: 'Watch Anime', method: 'GET', path: '/api/anime/watch', params: 'slug=one-punch-man-episode-12' },
-{ label: 'Watch Anime', method: 'GET', path: '/api/anime/test', params: 'slug=one-punch-man-episode-12' },
+    { label: 'Search Anime',         method: 'GET', path: '/api/anime/search',    params: 'q=naruto' },
+    { label: 'Latest Episode Anime', method: 'GET', path: '/api/anime/latest',    params: 'page=1' },
+    { label: 'Popular Anime',        method: 'GET', path: '/api/anime/popular',   params: '' },
+    { label: 'List Genre Anime',     method: 'GET', path: '/api/anime/listgenre', params: '' },
+    { label: 'Jadwalrilis Anime',    method: 'GET', path: '/api/anime/schedule',  params: 'day=monday' },
+    { label: 'Batch Anime',          method: 'GET', path: '/api/anime/batch',     params: 'page=1' },
+    { label: 'Detail Anime',         method: 'GET', path: '/api/anime/detail',    params: 'slug=one-punch-man' },
+    { label: 'Watch Anime',          method: 'GET', path: '/api/anime/watch',     params: 'slug=one-punch-man-episode-12' },
+    { label: 'Watch Anime',          method: 'GET', path: '/api/anime/test',      params: 'slug=one-punch-man-episode-12' },
   ]},
   { g: 'manga',   label: 'Manga',   items: [
-    { label: 'Search Manga',   method: 'GET', path: '/api/manga/search',   params: 'q=naruto' },
-{ label: 'Latest Manga',   method: 'GET', path: '/api/manga/latest',   params: 'page=1' },
-{ label: 'Popular Manga',   method: 'GET', path: '/api/manga/popular',   params: 'page=1' },
-{ label: 'New Series Manga',   method: 'GET', path: '/api/manga/new',   params: 'page=1' },
-{ label: 'List Genre Manga',   method: 'GET', path: '/api/manga/listgenre',   params: '' },
-{ label: 'A-Z Manga',   method: 'GET', path: '/api/manga/az',   params: 'page=1' },
-{ label: 'Detail Manga',   method: 'GET', path: '/api/manga/detail',   params: 'slug=one punch man' },
-{ label: 'Read Manga',   method: 'GET', path: '/api/manga/read',   params: 'slug=one-punch-man-chapter-228' },
+    { label: 'Search Manga',         method: 'GET', path: '/api/manga/search',    params: 'q=naruto' },
+    { label: 'Latest Manga',         method: 'GET', path: '/api/manga/latest',    params: 'page=1' },
+    { label: 'Popular Manga',        method: 'GET', path: '/api/manga/popular',   params: 'page=1' },
+    { label: 'New Series Manga',     method: 'GET', path: '/api/manga/new',       params: 'page=1' },
+    { label: 'List Genre Manga',     method: 'GET', path: '/api/manga/listgenre', params: '' },
+    { label: 'A-Z Manga',            method: 'GET', path: '/api/manga/az',        params: 'page=1' },
+    { label: 'Detail Manga',         method: 'GET', path: '/api/manga/detail',    params: 'slug=one punch man' },
+    { label: 'Read Manga',           method: 'GET', path: '/api/manga/read',      params: 'slug=one-punch-man-chapter-228' },
   ]},
   { g: 'manhua',  label: 'Manhua',  items: [
     { label: 'Search Manhua/Manhwa',  method: 'GET', path: '/api/manhua/search',  params: 'q=solo leveling' },
-{ label: 'Popular Manhua/Manhwa', method: 'GET', path: '/api/manhua/popular', params: '' },
-{ label: 'Latest Manhua/Manhwa',  method: 'GET', path: '/api/manhua/latest',  params: '' },
-{ label: 'Project Manhua/Manhwa', method: 'GET', path: '/api/manhua/project', params: 'page=1' },
-{ label: 'Detail Manhua/Manhwa', method: 'GET', path: '/api/manhua/detail', params: 'slug=only-i-have-an-ex-grade-summon' },
-{ label: 'Chapter Manhua/Manhwa', method: 'GET', path: '/api/manhua/chapter', params: 'slug=only-i-have-an-ex-grade-summon-chapter-16' },
+    { label: 'Popular Manhua/Manhwa', method: 'GET', path: '/api/manhua/popular', params: '' },
+    { label: 'Latest Manhua/Manhwa',  method: 'GET', path: '/api/manhua/latest',  params: '' },
+    { label: 'Project Manhua/Manhwa', method: 'GET', path: '/api/manhua/project', params: 'page=1' },
+    { label: 'Detail Manhua/Manhwa',  method: 'GET', path: '/api/manhua/detail',  params: 'slug=only-i-have-an-ex-grade-summon' },
+    { label: 'Chapter Manhua/Manhwa', method: 'GET', path: '/api/manhua/chapter', params: 'slug=only-i-have-an-ex-grade-summon-chapter-16' },
   ]},
   { g: 'donghua', label: 'Donghua', items: [
-    { label: 'Search Donghua',   method: 'GET', path: '/api/donghua/search',          params: 'q=battle through the heavens' },
-    { label: 'Latest Donghua',   method: 'GET', path: '/api/donghua/latest', },
-    { label: 'Popular Donghua',  method: 'GET', path: '/api/donghua/popular',  },
+    { label: 'Search Donghua',   method: 'GET', path: '/api/donghua/search',   params: 'q=battle through the heavens' },
+    { label: 'Latest Donghua',   method: 'GET', path: '/api/donghua/latest',   params: '' },
+    { label: 'Popular Donghua',  method: 'GET', path: '/api/donghua/popular',  params: '' },
     { label: 'Detail Donghua',   method: 'GET', path: '/api/donghua/detail',   params: 'slug=renegade-immortal-episode-135-subtitle-indonesia' },
     { label: 'Episodes Donghua', method: 'GET', path: '/api/donghua/episodes', params: 'slug=renegade-immortal' },
-{ label: 'Schedule Donghua', method: 'GET', path: '/api/donghua/schedule', params: '' },
-{ label: 'Genres Donghua', method: 'GET', path: '/api/donghua/genres', params: 'genre=action' },
+    { label: 'Schedule Donghua', method: 'GET', path: '/api/donghua/schedule', params: '' },
+    { label: 'Genres Donghua',   method: 'GET', path: '/api/donghua/genres',   params: 'genre=action' },
   ]},
   { g: 'system',  label: 'System',  items: [
-    { label: 'All Statuses',   method: 'GET', path: '/api/status',  params: '' },
-    { label: 'Force Refresh',  method: 'GET', path: '/api/status',  params: 'refresh=true' },
-    { label: 'Error Log',      method: 'GET', path: '/api/health',  params: 'mode=errors' },
-    { label: 'Uptime Summary', method: 'GET', path: '/api/health',  params: 'mode=summary' },
+    { label: 'All Statuses',   method: 'GET', path: '/api/status', params: '' },
+    { label: 'Force Refresh',  method: 'GET', path: '/api/status', params: 'refresh=true' },
+    { label: 'Error Log',      method: 'GET', path: '/api/health', params: 'mode=errors' },
+    { label: 'Uptime Summary', method: 'GET', path: '/api/health', params: 'mode=summary' },
   ]},
 ];
 
@@ -74,27 +72,22 @@ function syntaxHighlight(json) {
   );
 }
 
-/* ── Main tester component (needs useSearchParams → Suspense) ── */
 function TesterContent() {
   const sp = useSearchParams();
 
-  const [method,   setMethod]   = useState('GET');
-  const [path,     setPath]     = useState(sp.get('path') || '/api/status');
-  const [params,   setParams]   = useState('');
-  const [headers,  setHeaders]  = useState('X-API-Key: ');
-  const [response, setResponse] = useState(null);
-  const [status,   setStatus]   = useState(null);
-  const [elapsed,  setElapsed]  = useState(null);
-  const [loading,  setLoading]  = useState(false);
-  const [copied,   setCopied]   = useState(false);
-  const [history,  setHistory]  = useState([]);
-
-  /* which category is active (drives background) */
+  const [method,    setMethod]    = useState('GET');
+  const [path,      setPath]      = useState(sp.get('path') || '/api/status');
+  const [params,    setParams]    = useState('');
+  const [headers,   setHeaders]   = useState('X-API-Key: ');
+  const [response,  setResponse]  = useState(null);
+  const [status,    setStatus]    = useState(null);
+  const [elapsed,   setElapsed]   = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [copied,    setCopied]    = useState(false);
+  const [history,   setHistory]   = useState([]);
   const [activeCat, setActiveCat] = useState('system');
-  /* mobile: sidebar open */
-  const [sideOpen, setSideOpen] = useState(false);
+  const [sideOpen,  setSideOpen]  = useState(false);
 
-  /* parse preset path on mount */
   useEffect(() => {
     const raw = sp.get('path') || '';
     if (!raw) return;
@@ -103,7 +96,6 @@ function TesterContent() {
     const pairs = [];
     url.searchParams.forEach((v, k) => pairs.push(`${k}=${v}`));
     setParams(pairs.join('\n'));
-    /* try to detect category from path */
     const cat = PRESETS.find(p => p.items.some(i => i.path === url.pathname));
     if (cat) setActiveCat(cat.g);
   }, []);
@@ -128,7 +120,7 @@ function TesterContent() {
     setPath(item.path);
     setParams(item.params || '');
     setActiveCat(cat);
-    setSideOpen(false); /* close sidebar on mobile after selecting */
+    setSideOpen(false);
   }
 
   const send = useCallback(async () => {
@@ -150,22 +142,36 @@ function TesterContent() {
   }, [method, path, params, headers]);
 
   const statusColor =
-    status === null ? 'var(--white3)'
+    status === null       ? 'var(--white3)'
     : status >= 200 && status < 300 ? 'var(--green)'
     : status >= 400 && status < 500 ? 'var(--yellow)'
     : 'var(--red)';
 
   const bgImg = CAT_BG[activeCat];
 
+  // ── FIX: background digabung jadi satu backgroundImage property
+  // sehingga tidak ada overlay terpisah yang bocor saat scroll mobile
+  const sidebarStyle = {
+    ...(bgImg
+      ? {
+          backgroundImage   : `linear-gradient(rgba(12,12,12,0.91) 0%, rgba(12,12,12,0.97) 100%), url(${bgImg})`,
+          backgroundSize    : 'auto, cover',
+          backgroundPosition: 'top, center',
+          backgroundRepeat  : 'repeat, no-repeat',
+        }
+      : {}),
+    backgroundColor: '#0c0c0c',
+  };
+
   return (
     <>
       <style>{`
-        /* ── layout ───────────────────────────────── */
         .tester-wrap {
           display: grid;
           grid-template-columns: 220px 1fr;
           min-height: calc(100vh - 60px);
         }
+
         .tester-sidebar {
           border-right: 1px solid var(--border);
           position: sticky;
@@ -173,27 +179,38 @@ function TesterContent() {
           height: calc(100vh - 60px);
           overflow-y: auto;
           padding: 20px 16px;
-          transition: background-image 0.5s ease;
-          background-size: cover;
-          background-position: center;
         }
-        .tester-main { display: flex; flex-direction: column; min-width: 0; }
 
-        /* ── mobile ──────────────────────────────── */
-        @media(max-width: 700px) {
-          .tester-wrap { grid-template-columns: 1fr; }
+        .tester-main {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+
+        .sidebar-toggle { display: none; }
+
+        @media (max-width: 700px) {
+          .tester-wrap {
+            grid-template-columns: 1fr;
+          }
 
           .tester-sidebar {
             position: fixed;
-            top: 60px; left: 0; right: 0; bottom: 0;
+            top: 60px;
+            left: 0;
+            right: 0;
+            bottom: 0;
             z-index: 150;
             height: auto;
             max-height: calc(100vh - 60px);
+            overflow-y: auto;
+            padding: 20px;
             transform: translateX(-100%);
-            transition: transform .28s ease, background-image 0.5s ease;
-            padding: 20px 20px;
-            background-color: var(--bg);
+            transition: transform .28s ease;
+            /* background-attachment: local agar background ikut scroll */
+            background-attachment: local, local;
           }
+
           .tester-sidebar.open {
             transform: translateX(0);
           }
@@ -202,92 +219,77 @@ function TesterContent() {
             display: flex !important;
           }
         }
-        @media(min-width: 701px) {
-          .sidebar-toggle { display: none !important; }
-        }
       `}</style>
 
       <div className="tester-wrap">
 
-        {/* ── Sidebar ─────────────────────────────────────────── */}
+        {/* ── Sidebar ─────────────────────────────── */}
         <aside
           className={`tester-sidebar${sideOpen ? ' open' : ''}`}
-          style={{
-            backgroundImage: bgImg ? `url(${bgImg})` : 'none',
-          }}
+          style={sidebarStyle}
         >
-          {/* Dark overlay so text stays readable over bg image */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: bgImg
-              ? 'linear-gradient(to bottom, rgba(12,12,12,0.88) 0%, rgba(12,12,12,0.96) 100%)'
-              : 'transparent',
-            pointerEvents: 'none',
-          }} />
-
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            {PRESETS.map(group => (
-              <div key={group.g} style={{ marginBottom: 20 }}>
-                <div className="label" style={{ marginBottom: 8, color: activeCat === group.g ? 'var(--white2)' : 'var(--white3)' }}>
-                  {group.label}
-                </div>
-                {group.items.map(item => (
-                  <button
-                    key={item.label}
-                    className={`btn btn-ghost btn-sm`}
-                    style={{
-                      width: '100%',
-                      justifyContent: 'flex-start',
-                      marginBottom: 4,
-                      textAlign: 'left',
-                      borderColor: (activeCat === group.g && path === item.path)
-                        ? 'var(--white2)' : 'var(--border)',
-                      color: (activeCat === group.g && path === item.path)
-                        ? 'var(--white)' : 'var(--white3)',
-                    }}
-                    onClick={() => applyPreset(item, group.g)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+          {PRESETS.map(group => (
+            <div key={group.g} style={{ marginBottom: 20 }}>
+              <div className="label" style={{
+                marginBottom: 8,
+                color: activeCat === group.g ? 'var(--white2)' : 'var(--white3)',
+              }}>
+                {group.label}
               </div>
-            ))}
+              {group.items.map(item => (
+                <button
+                  key={item.label + item.path}
+                  className="btn btn-ghost btn-sm"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'flex-start',
+                    marginBottom: 4,
+                    textAlign: 'left',
+                    borderColor: (activeCat === group.g && path === item.path)
+                      ? 'var(--white2)' : 'var(--border)',
+                    color: (activeCat === group.g && path === item.path)
+                      ? 'var(--white)' : 'var(--white3)',
+                  }}
+                  onClick={() => applyPreset(item, group.g)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          ))}
 
-            {/* History */}
-            {history.length > 0 && (
-              <>
-                <div style={{ height: 1, background: 'var(--border)', margin: '12px 0' }} />
-                <div className="label" style={{ marginBottom: 8 }}>History</div>
-                {history.map((h, i) => (
-                  <div
-                    key={i}
-                    onClick={() => { setPath(h.url.split('?')[0]); setSideOpen(false); }}
-                    style={{
-                      fontFamily: 'var(--font-mono)', fontSize: 9,
-                      padding: '6px 0', borderBottom: '1px solid var(--border)',
-                      cursor: 'pointer',
-                      color: h.status >= 200 && h.status < 300 ? 'var(--green)' : 'var(--red)',
-                      display: 'flex', justifyContent: 'space-between', gap: 6,
-                    }}
-                  >
-                    <span>{h.status}</span>
-                    <span style={{ color: 'var(--white3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.url}</span>
-                    <span style={{ color: 'var(--white3)', flexShrink: 0 }}>{h.ms}ms</span>
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
+          {history.length > 0 && (
+            <>
+              <div style={{ height: 1, background: 'var(--border)', margin: '12px 0' }} />
+              <div className="label" style={{ marginBottom: 8 }}>History</div>
+              {history.map((h, i) => (
+                <div
+                  key={i}
+                  onClick={() => { setPath(h.url.split('?')[0]); setSideOpen(false); }}
+                  style={{
+                    fontFamily: 'var(--font-mono)', fontSize: 9,
+                    padding: '6px 0', borderBottom: '1px solid var(--border)',
+                    cursor: 'pointer',
+                    color: h.status >= 200 && h.status < 300 ? 'var(--green)' : 'var(--red)',
+                    display: 'flex', justifyContent: 'space-between', gap: 6,
+                  }}
+                >
+                  <span>{h.status}</span>
+                  <span style={{ color: 'var(--white3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.url}</span>
+                  <span style={{ color: 'var(--white3)', flexShrink: 0 }}>{h.ms}ms</span>
+                </div>
+              ))}
+            </>
+          )}
         </aside>
 
-        {/* ── Main content ─────────────────────────────────────── */}
+        {/* ── Main ────────────────────────────────── */}
         <div className="tester-main">
 
-          {/* Mobile toolbar: toggle sidebar + current category indicator */}
+          {/* Mobile toolbar */}
           <div className="sidebar-toggle" style={{
             padding: '10px 16px',
             borderBottom: '1px solid var(--border)',
-            display: 'flex',
             alignItems: 'center',
             gap: 10,
             background: 'var(--bg2)',
@@ -339,7 +341,7 @@ function TesterContent() {
             </button>
           </div>
 
-          {/* Params + Headers — stacked on mobile */}
+          {/* Params + Headers */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', borderBottom: '1px solid var(--border)' }}>
             <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
               <div className="label" style={{ marginBottom: 6, fontSize: 9 }}>Query Params (key=value per line)</div>
@@ -348,7 +350,7 @@ function TesterContent() {
                 style={{ fontFamily: 'var(--font-mono)', fontSize: 11, resize: 'vertical', minHeight: 72, lineHeight: 1.7 }}
                 value={params}
                 onChange={e => setParams(e.target.value)}
-                placeholder={'q=naruto\npage=1\nprovider=jikan-anime'}
+                placeholder={'q=naruto\npage=1'}
               />
             </div>
             <div style={{ padding: '14px 16px' }}>
@@ -373,8 +375,6 @@ function TesterContent() {
 
           {/* Response area */}
           <div style={{ flex: 1, padding: '16px 16px', position: 'relative', minHeight: 280 }}>
-
-            {/* Response bg image (subtle, blurred) */}
             {bgImg && (
               <div style={{
                 position: 'absolute', inset: 0,
@@ -388,7 +388,6 @@ function TesterContent() {
             )}
 
             <div style={{ position: 'relative', zIndex: 1 }}>
-              {/* Response header row */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, textTransform: 'uppercase' }}>Response</span>
@@ -419,7 +418,6 @@ function TesterContent() {
                 )}
               </div>
 
-              {/* Response body */}
               {loading ? (
                 <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: 200, gap: 14 }}>
                   <span className="spinner" style={{ width: 24, height: 24 }} />
@@ -454,13 +452,11 @@ function TesterContent() {
   );
 }
 
-/* ── Page wrapper ───────────────────────────────────────────── */
 export default function TesterPage() {
   return (
     <>
       <Navbar />
       <div className="page" style={{ background: 'var(--bg)', paddingTop: 60 }}>
-        {/* Page header */}
         <div style={{ borderBottom: '1px solid var(--border)', padding: 'clamp(20px,4vw,32px) clamp(20px,5vw,48px)' }}>
           <div className="label" style={{ marginBottom: 8 }}>Tools</div>
           <h1 className="display" style={{ fontSize: 'clamp(32px,7vw,72px)' }}>API Tester</h1>
