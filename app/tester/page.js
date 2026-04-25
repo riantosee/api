@@ -3,61 +3,149 @@ import { useState, useCallback, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Navbar from '../../components/layout/Navbar';
 
+// ─────────────────────────────────────────────────────────────────
+// CATEGORY CONFIG — tambah entry baru di sini untuk provider baru
+// ─────────────────────────────────────────────────────────────────
 const CAT_BG = {
-  anime:   'https://files.catbox.moe/7ipdhn.jpg',
-  manga:   'https://files.catbox.moe/r404th.jpg',
-  manhua:  'https://files.catbox.moe/pqmjmo.jpg',
-  donghua: 'https://files.catbox.moe/rc9ubf.jpg',
-  system:  null,
+  'anime-v1'   : 'https://files.catbox.moe/7ipdhn.jpg',
+  'anime-v2'   : 'https://files.catbox.moe/7ipdhn.jpg',
+  'manga-v1'   : 'https://files.catbox.moe/r404th.jpg',
+  'manhua-v1'  : 'https://files.catbox.moe/pqmjmo.jpg',
+  'donghua-v1' : 'https://files.catbox.moe/rc9ubf.jpg',
+  'donghua-v2' : 'https://files.catbox.moe/rc9ubf.jpg',
+  'system'     : null,
 };
 
-const PRESETS = [
-  { g: 'anime',   label: 'Anime',   items: [
-    { label: 'Search Anime',         method: 'GET', path: '/api/anime/search',    params: 'q=naruto' },
-    { label: 'Latest Episode Anime', method: 'GET', path: '/api/anime/latest',    params: 'page=1' },
-    { label: 'Popular Anime',        method: 'GET', path: '/api/anime/popular',   params: '' },
-    { label: 'List Genre Anime',     method: 'GET', path: '/api/anime/listgenre', params: '' },
-    { label: 'Jadwalrilis Anime',    method: 'GET', path: '/api/anime/schedule',  params: 'day=monday' },
-    { label: 'Batch Anime',          method: 'GET', path: '/api/anime/batch',     params: 'page=1' },
-    { label: 'Detail Anime',         method: 'GET', path: '/api/anime/detail',    params: 'slug=one-punch-man' },
-    { label: 'Watch Anime',          method: 'GET', path: '/api/anime/watch',     params: 'slug=one-punch-man-episode-12' },
-    { label: 'Watch Anime',          method: 'GET', path: '/api/anime/test',      params: 'slug=one-punch-man-episode-12' },
-  ]},
-  { g: 'manga',   label: 'Manga',   items: [
-    { label: 'Search Manga',         method: 'GET', path: '/api/manga/search',    params: 'q=naruto' },
-    { label: 'Latest Manga',         method: 'GET', path: '/api/manga/latest',    params: 'page=1' },
-    { label: 'Popular Manga',        method: 'GET', path: '/api/manga/popular',   params: 'page=1' },
-    { label: 'New Series Manga',     method: 'GET', path: '/api/manga/new',       params: 'page=1' },
-    { label: 'List Genre Manga',     method: 'GET', path: '/api/manga/listgenre', params: '' },
-    { label: 'A-Z Manga',            method: 'GET', path: '/api/manga/az',        params: 'page=1' },
-    { label: 'Detail Manga',         method: 'GET', path: '/api/manga/detail',    params: 'slug=one punch man' },
-    { label: 'Read Manga',           method: 'GET', path: '/api/manga/read',      params: 'slug=one-punch-man-chapter-228' },
-  ]},
-  { g: 'manhua',  label: 'Manhua',  items: [
-    { label: 'Search Manhua/Manhwa',  method: 'GET', path: '/api/manhua/search',  params: 'q=solo leveling' },
-    { label: 'Popular Manhua/Manhwa', method: 'GET', path: '/api/manhua/popular', params: '' },
-    { label: 'Latest Manhua/Manhwa',  method: 'GET', path: '/api/manhua/latest',  params: '' },
-    { label: 'Project Manhua/Manhwa', method: 'GET', path: '/api/manhua/project', params: 'page=1' },
-    { label: 'Detail Manhua/Manhwa',  method: 'GET', path: '/api/manhua/detail',  params: 'slug=only-i-have-an-ex-grade-summon' },
-    { label: 'Chapter Manhua/Manhwa', method: 'GET', path: '/api/manhua/chapter', params: 'slug=only-i-have-an-ex-grade-summon-chapter-16' },
-  ]},
-  { g: 'donghua', label: 'Donghua', items: [
-    { label: 'Search Donghua',   method: 'GET', path: '/api/donghua/search',   params: 'q=battle through the heavens' },
-    { label: 'Latest Donghua',   method: 'GET', path: '/api/donghua/latest',   params: '' },
-    { label: 'Popular Donghua',  method: 'GET', path: '/api/donghua/popular',  params: '' },
-    { label: 'Detail Donghua',   method: 'GET', path: '/api/donghua/detail',   params: 'slug=renegade-immortal-episode-135-subtitle-indonesia' },
-    { label: 'Episodes Donghua', method: 'GET', path: '/api/donghua/episodes', params: 'slug=renegade-immortal' },
-    { label: 'Schedule Donghua', method: 'GET', path: '/api/donghua/schedule', params: '' },
-    { label: 'Genres Donghua',   method: 'GET', path: '/api/donghua/genres',   params: 'genre=action' },
-  ]},
-  { g: 'system',  label: 'System',  items: [
-    { label: 'All Statuses',   method: 'GET', path: '/api/status', params: '' },
-    { label: 'Force Refresh',  method: 'GET', path: '/api/status', params: 'refresh=true' },
-    { label: 'Error Log',      method: 'GET', path: '/api/health', params: 'mode=errors' },
-    { label: 'Uptime Summary', method: 'GET', path: '/api/health', params: 'mode=summary' },
-  ]},
+// ─────────────────────────────────────────────────────────────────
+// PRESETS — struktur: category → version → items
+// Untuk tambah provider baru: tambah object baru di CATEGORIES
+// ─────────────────────────────────────────────────────────────────
+const CATEGORIES = [
+  {
+    id      : 'anime',
+    label   : 'Anime',
+    versions: [
+      {
+        id      : 'anime-v1',
+        label   : 'v1 · Samehadaku',
+        provider: 'samehadaku',
+        items   : [
+          { label: 'Search',        method: 'GET', path: '/api/anime/search',    params: 'q=naruto' },
+          { label: 'Latest Episode',method: 'GET', path: '/api/anime/latest',    params: 'page=1' },
+          { label: 'Popular',       method: 'GET', path: '/api/anime/popular',   params: '' },
+          { label: 'List Genre',    method: 'GET', path: '/api/anime/listgenre', params: '' },
+          { label: 'Jadwal Rilis',  method: 'GET', path: '/api/anime/schedule',  params: 'day=monday' },
+          { label: 'Batch',         method: 'GET', path: '/api/anime/batch',     params: 'page=1' },
+          { label: 'Detail',        method: 'GET', path: '/api/anime/detail',    params: 'slug=one-punch-man' },
+          { label: 'Watch',         method: 'GET', path: '/api/anime/watch',     params: 'slug=one-punch-man-episode-12' },
+        ],
+      },
+      {
+        id      : 'anime-v2',
+        label   : 'v2 · Otakudesu',
+        provider: 'otakudesu',
+        items   : [
+          { label: 'Search',        method: 'GET', path: '/api/v2/anime/search',  params: 'q=naruto' },
+          { label: 'Latest Episode',method: 'GET', path: '/api/v2/anime/latest',  params: 'page=1' },
+          { label: 'Popular',       method: 'GET', path: '/api/v2/anime/popular', params: '' },
+          { label: 'Detail',        method: 'GET', path: '/api/v2/anime/detail',  params: 'slug=one-punch-man' },
+          { label: 'Watch',         method: 'GET', path: '/api/v2/anime/watch',   params: 'slug=one-punch-man-episode-12' },
+        ],
+      },
+    ],
+  },
+  {
+    id      : 'manga',
+    label   : 'Manga',
+    versions: [
+      {
+        id      : 'manga-v1',
+        label   : 'v1 · Komikstation',
+        provider: 'komikstation',
+        items   : [
+          { label: 'Search',     method: 'GET', path: '/api/manga/search',    params: 'q=naruto' },
+          { label: 'Latest',     method: 'GET', path: '/api/manga/latest',    params: 'page=1' },
+          { label: 'Popular',    method: 'GET', path: '/api/manga/popular',   params: 'page=1' },
+          { label: 'New Series', method: 'GET', path: '/api/manga/new',       params: 'page=1' },
+          { label: 'List Genre', method: 'GET', path: '/api/manga/listgenre', params: '' },
+          { label: 'A-Z',        method: 'GET', path: '/api/manga/az',        params: 'page=1' },
+          { label: 'Detail',     method: 'GET', path: '/api/manga/detail',    params: 'slug=one-punch-man' },
+          { label: 'Read',       method: 'GET', path: '/api/manga/read',      params: 'slug=one-punch-man-chapter-228' },
+        ],
+      },
+    ],
+  },
+  {
+    id      : 'manhua',
+    label   : 'Manhua',
+    versions: [
+      {
+        id      : 'manhua-v1',
+        label   : 'v1 · Manhwaland',
+        provider: 'manhwaland',
+        items   : [
+          { label: 'Search',  method: 'GET', path: '/api/manhua/search',  params: 'q=solo leveling' },
+          { label: 'Popular', method: 'GET', path: '/api/manhua/popular', params: '' },
+          { label: 'Latest',  method: 'GET', path: '/api/manhua/latest',  params: '' },
+          { label: 'Project', method: 'GET', path: '/api/manhua/project', params: 'page=1' },
+          { label: 'Detail',  method: 'GET', path: '/api/manhua/detail',  params: 'slug=only-i-have-an-ex-grade-summon' },
+          { label: 'Chapter', method: 'GET', path: '/api/manhua/chapter', params: 'slug=only-i-have-an-ex-grade-summon-chapter-16' },
+        ],
+      },
+    ],
+  },
+  {
+    id      : 'donghua',
+    label   : 'Donghua',
+    versions: [
+      {
+        id      : 'donghua-v1',
+        label   : 'v1 · Kuramanime',
+        provider: 'kuramanime',
+        items   : [
+          { label: 'Search',   method: 'GET', path: '/api/donghua/search',   params: 'q=battle through the heavens' },
+          { label: 'Latest',   method: 'GET', path: '/api/donghua/latest',   params: '' },
+          { label: 'Popular',  method: 'GET', path: '/api/donghua/popular',  params: '' },
+          { label: 'Detail',   method: 'GET', path: '/api/donghua/detail',   params: 'slug=renegade-immortal-episode-135-subtitle-indonesia' },
+          { label: 'Episodes', method: 'GET', path: '/api/donghua/episodes', params: 'slug=renegade-immortal' },
+          { label: 'Schedule', method: 'GET', path: '/api/donghua/schedule', params: '' },
+          { label: 'Genres',   method: 'GET', path: '/api/donghua/genres',   params: 'genre=action' },
+        ],
+      },
+      {
+        id      : 'donghua-v2',
+        label   : 'v2 · Provider B',
+        provider: 'providerB',
+        items   : [
+          { label: 'Search',  method: 'GET', path: '/api/v2/donghua/search',  params: 'q=naruto' },
+          { label: 'Latest',  method: 'GET', path: '/api/v2/donghua/latest',  params: '' },
+          { label: 'Popular', method: 'GET', path: '/api/v2/donghua/popular', params: '' },
+        ],
+      },
+    ],
+  },
+  {
+    id      : 'system',
+    label   : 'System',
+    versions: [
+      {
+        id      : 'system',
+        label   : 'System',
+        provider: '',
+        items   : [
+          { label: 'All Statuses',   method: 'GET', path: '/api/status', params: '' },
+          { label: 'Force Refresh',  method: 'GET', path: '/api/status', params: 'refresh=true' },
+          { label: 'Error Log',      method: 'GET', path: '/api/health', params: 'mode=errors' },
+          { label: 'Uptime Summary', method: 'GET', path: '/api/health', params: 'mode=summary' },
+        ],
+      },
+    ],
+  },
 ];
 
+// ─────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────
 function syntaxHighlight(json) {
   if (typeof json !== 'string') json = JSON.stringify(json, null, 2);
   return json.replace(
@@ -72,21 +160,30 @@ function syntaxHighlight(json) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────
 function TesterContent() {
   const sp = useSearchParams();
 
-  const [method,    setMethod]    = useState('GET');
-  const [path,      setPath]      = useState(sp.get('path') || '/api/status');
-  const [params,    setParams]    = useState('');
-  const [headers,   setHeaders]   = useState('X-API-Key: ');
-  const [response,  setResponse]  = useState(null);
-  const [status,    setStatus]    = useState(null);
-  const [elapsed,   setElapsed]   = useState(null);
-  const [loading,   setLoading]   = useState(false);
-  const [copied,    setCopied]    = useState(false);
-  const [history,   setHistory]   = useState([]);
-  const [activeCat, setActiveCat] = useState('system');
-  const [sideOpen,  setSideOpen]  = useState(false);
+  const [method,      setMethod]      = useState('GET');
+  const [path,        setPath]        = useState(sp.get('path') || '/api/status');
+  const [params,      setParams]      = useState('');
+  const [headers,     setHeaders]     = useState('X-API-Key: ');
+  const [response,    setResponse]    = useState(null);
+  const [status,      setStatus]      = useState(null);
+  const [elapsed,     setElapsed]     = useState(null);
+  const [loading,     setLoading]     = useState(false);
+  const [copied,      setCopied]      = useState(false);
+  const [history,     setHistory]     = useState([]);
+  const [sideOpen,    setSideOpen]    = useState(false);
+
+  // Active category & version
+  const [activeCatId, setActiveCatId] = useState('system');
+  const [activeVerId, setActiveVerId] = useState('system');
+
+  // Expand/collapse category di sidebar
+  const [expandedCats, setExpandedCats] = useState({ system: true });
 
   useEffect(() => {
     const raw = sp.get('path') || '';
@@ -96,8 +193,6 @@ function TesterContent() {
     const pairs = [];
     url.searchParams.forEach((v, k) => pairs.push(`${k}=${v}`));
     setParams(pairs.join('\n'));
-    const cat = PRESETS.find(p => p.items.some(i => i.path === url.pathname));
-    if (cat) setActiveCat(cat.g);
   }, []);
 
   function buildUrl() {
@@ -115,12 +210,18 @@ function TesterContent() {
     }, {});
   }
 
-  function applyPreset(item, cat) {
+  function applyPreset(item, catId, verId) {
     setMethod(item.method);
     setPath(item.path);
     setParams(item.params || '');
-    setActiveCat(cat);
+    setActiveCatId(catId);
+    setActiveVerId(verId);
     setSideOpen(false);
+  }
+
+  function toggleCat(catId) {
+    setExpandedCats(prev => ({ ...prev, [catId]: !prev[catId] }));
+    setActiveCatId(catId);
   }
 
   const send = useCallback(async () => {
@@ -142,15 +243,13 @@ function TesterContent() {
   }, [method, path, params, headers]);
 
   const statusColor =
-    status === null       ? 'var(--white3)'
+    status === null             ? 'var(--white3)'
     : status >= 200 && status < 300 ? 'var(--green)'
     : status >= 400 && status < 500 ? 'var(--yellow)'
     : 'var(--red)';
 
-  const bgImg = CAT_BG[activeCat];
+  const bgImg = CAT_BG[activeVerId] || null;
 
-  // ── FIX: background digabung jadi satu backgroundImage property
-  // sehingga tidak ada overlay terpisah yang bocor saat scroll mobile
   const sidebarStyle = {
     ...(bgImg
       ? {
@@ -158,66 +257,87 @@ function TesterContent() {
           backgroundSize    : 'auto, cover',
           backgroundPosition: 'top, center',
           backgroundRepeat  : 'repeat, no-repeat',
+          backgroundAttachment: 'local, local',
         }
       : {}),
     backgroundColor: '#0c0c0c',
   };
+
+  // Active version object
+  const activeVer = CATEGORIES
+    .flatMap(c => c.versions)
+    .find(v => v.id === activeVerId);
 
   return (
     <>
       <style>{`
         .tester-wrap {
           display: grid;
-          grid-template-columns: 220px 1fr;
+          grid-template-columns: 230px 1fr;
           min-height: calc(100vh - 60px);
         }
-
         .tester-sidebar {
           border-right: 1px solid var(--border);
           position: sticky;
           top: 60px;
           height: calc(100vh - 60px);
           overflow-y: auto;
-          padding: 20px 16px;
+          padding: 16px 12px;
         }
-
-        .tester-main {
-          display: flex;
-          flex-direction: column;
-          min-width: 0;
-        }
-
+        .tester-main { display: flex; flex-direction: column; min-width: 0; }
         .sidebar-toggle { display: none; }
 
-        @media (max-width: 700px) {
-          .tester-wrap {
-            grid-template-columns: 1fr;
-          }
+        /* version tab strip */
+        .ver-tabs {
+          display: flex;
+          gap: 4px;
+          flex-wrap: wrap;
+          margin: 4px 0 8px 12px;
+        }
+        .ver-tab {
+          font-family: var(--font-mono);
+          font-size: 9px;
+          padding: 3px 8px;
+          border: 1px solid var(--border);
+          background: transparent;
+          color: var(--white3);
+          cursor: pointer;
+          letter-spacing: 0.04em;
+          transition: all .15s;
+        }
+        .ver-tab.active {
+          border-color: var(--white2);
+          color: var(--white);
+          background: rgba(255,255,255,0.06);
+        }
 
+        /* cat header */
+        .cat-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 6px 4px;
+          cursor: pointer;
+          user-select: none;
+          border-radius: 2px;
+        }
+        .cat-header:hover { background: rgba(255,255,255,0.04); }
+
+        @media (max-width: 700px) {
+          .tester-wrap { grid-template-columns: 1fr; }
           .tester-sidebar {
             position: fixed;
-            top: 60px;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 60px; left: 0; right: 0; bottom: 0;
             z-index: 150;
             height: auto;
             max-height: calc(100vh - 60px);
             overflow-y: auto;
-            padding: 20px;
+            padding: 16px;
             transform: translateX(-100%);
             transition: transform .28s ease;
-            /* background-attachment: local agar background ikut scroll */
-            background-attachment: local, local;
           }
-
-          .tester-sidebar.open {
-            transform: translateX(0);
-          }
-
-          .sidebar-toggle {
-            display: flex !important;
-          }
+          .tester-sidebar.open { transform: translateX(0); }
+          .sidebar-toggle { display: flex !important; }
         }
       `}</style>
 
@@ -228,40 +348,99 @@ function TesterContent() {
           className={`tester-sidebar${sideOpen ? ' open' : ''}`}
           style={sidebarStyle}
         >
-          {PRESETS.map(group => (
-            <div key={group.g} style={{ marginBottom: 20 }}>
-              <div className="label" style={{
-                marginBottom: 8,
-                color: activeCat === group.g ? 'var(--white2)' : 'var(--white3)',
-              }}>
-                {group.label}
-              </div>
-              {group.items.map(item => (
-                <button
-                  key={item.label + item.path}
-                  className="btn btn-ghost btn-sm"
-                  style={{
-                    width: '100%',
-                    justifyContent: 'flex-start',
-                    marginBottom: 4,
-                    textAlign: 'left',
-                    borderColor: (activeCat === group.g && path === item.path)
-                      ? 'var(--white2)' : 'var(--border)',
-                    color: (activeCat === group.g && path === item.path)
-                      ? 'var(--white)' : 'var(--white3)',
-                  }}
-                  onClick={() => applyPreset(item, group.g)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          ))}
+          {CATEGORIES.map(cat => {
+            const isExpanded = expandedCats[cat.id];
+            const isCatActive = activeCatId === cat.id;
 
+            return (
+              <div key={cat.id} style={{ marginBottom: 6 }}>
+
+                {/* Category header — klik untuk expand/collapse */}
+                <div
+                  className="cat-header"
+                  onClick={() => toggleCat(cat.id)}
+                >
+                  <span className="label" style={{
+                    color: isCatActive ? 'var(--white)' : 'var(--white3)',
+                    fontSize: 10,
+                    letterSpacing: '0.1em',
+                  }}>
+                    {cat.label.toUpperCase()}
+                  </span>
+                  <span style={{ color: 'var(--white4)', fontSize: 10 }}>
+                    {isExpanded ? '▾' : '▸'}
+                  </span>
+                </div>
+
+                {/* Version tabs */}
+                {isExpanded && cat.versions.length > 1 && (
+                  <div className="ver-tabs">
+                    {cat.versions.map(ver => (
+                      <button
+                        key={ver.id}
+                        className={`ver-tab${activeVerId === ver.id ? ' active' : ''}`}
+                        onClick={() => {
+                          setActiveCatId(cat.id);
+                          setActiveVerId(ver.id);
+                        }}
+                      >
+                        {ver.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Endpoint items — hanya tampil versi aktif */}
+                {isExpanded && cat.versions.map(ver => {
+                  const isVerActive = activeVerId === ver.id || cat.versions.length === 1;
+                  if (!isVerActive && cat.versions.length > 1) return null;
+
+                  return (
+                    <div key={ver.id} style={{ marginBottom: 4 }}>
+                      {/* Label provider jika hanya 1 versi */}
+                      {cat.versions.length === 1 && ver.provider && (
+                        <div style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: 8,
+                          color: 'var(--white4)',
+                          letterSpacing: '0.08em',
+                          padding: '2px 4px 4px',
+                        }}>
+                          {ver.provider.toUpperCase()}
+                        </div>
+                      )}
+
+                      {ver.items.map(item => (
+                        <button
+                          key={item.label + item.path}
+                          className="btn btn-ghost btn-sm"
+                          style={{
+                            width: '100%',
+                            justifyContent: 'flex-start',
+                            marginBottom: 3,
+                            textAlign: 'left',
+                            borderColor: (activeVerId === ver.id && path === item.path)
+                              ? 'var(--white2)' : 'var(--border)',
+                            color: (activeVerId === ver.id && path === item.path)
+                              ? 'var(--white)' : 'var(--white3)',
+                          }}
+                          onClick={() => applyPreset(item, cat.id, ver.id)}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+
+          {/* History */}
           {history.length > 0 && (
             <>
               <div style={{ height: 1, background: 'var(--border)', margin: '12px 0' }} />
-              <div className="label" style={{ marginBottom: 8 }}>History</div>
+              <div className="label" style={{ marginBottom: 8, fontSize: 9 }}>HISTORY</div>
               {history.map((h, i) => (
                 <div
                   key={i}
@@ -294,20 +473,12 @@ function TesterContent() {
             gap: 10,
             background: 'var(--bg2)',
           }}>
-            <button
-              className="btn btn-sm"
-              style={{ flexShrink: 0 }}
-              onClick={() => setSideOpen(o => !o)}
-            >
+            <button className="btn btn-sm" style={{ flexShrink: 0 }} onClick={() => setSideOpen(o => !o)}>
               {sideOpen ? '✕ Close' : '☰ Presets'}
             </button>
-            {activeCat !== 'system' && (
-              <span style={{
-                fontFamily: 'var(--font-mono)', fontSize: 9,
-                letterSpacing: '0.12em', textTransform: 'uppercase',
-                color: 'var(--white3)',
-              }}>
-                {activeCat}
+            {activeVer && (
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--white3)' }}>
+                {activeVer.label}
               </span>
             )}
           </div>
@@ -374,7 +545,7 @@ function TesterContent() {
           </div>
 
           {/* Response area */}
-          <div style={{ flex: 1, padding: '16px 16px', position: 'relative', minHeight: 280 }}>
+          <div style={{ flex: 1, padding: '16px', position: 'relative', minHeight: 280 }}>
             {bgImg && (
               <div style={{
                 position: 'absolute', inset: 0,
@@ -395,13 +566,21 @@ function TesterContent() {
                     <>
                       <span style={{
                         fontFamily: 'var(--font-mono)', fontWeight: 500, fontSize: 12,
-                        color: statusColor,
-                        background: `${statusColor}18`,
-                        padding: '3px 9px',
-                        border: `1px solid ${statusColor}40`,
+                        color: statusColor, background: `${statusColor}18`,
+                        padding: '3px 9px', border: `1px solid ${statusColor}40`,
                       }}>{status}</span>
                       <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--white3)' }}>{elapsed}ms</span>
                     </>
+                  )}
+                  {/* Provider badge */}
+                  {activeVer?.provider && (
+                    <span style={{
+                      fontFamily: 'var(--font-mono)', fontSize: 9,
+                      color: 'var(--white4)', letterSpacing: '0.1em',
+                      border: '1px solid var(--border)', padding: '2px 7px',
+                    }}>
+                      {activeVer.provider.toUpperCase()}
+                    </span>
                   )}
                 </div>
                 {response && (
@@ -437,7 +616,7 @@ function TesterContent() {
                   flexDirection: 'column', gap: 8,
                 }}>
                   <span style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px,6vw,40px)', fontWeight: 900, color: 'var(--white4)', letterSpacing: '-0.01em' }}>
-                    {activeCat !== 'system' ? activeCat.toUpperCase() : 'TEST'}
+                    {activeCatId !== 'system' ? activeCatId.toUpperCase() : 'TEST'}
                   </span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--white3)' }}>
                     Hit ▶ Send to run the request
