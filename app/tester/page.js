@@ -20,6 +20,7 @@ const PRESETS = [
 { label: 'Popular Anime', method: 'GET', path: '/api/anime/popular', params: '' },
 { label: 'List Genre Anime', method: 'GET', path: '/api/anime/listgenre', params: '' },
 { label: 'Jadwalrilis Anime', method: 'GET', path: '/api/anime/schedule', params: 'day=monday' },
+{ label: 'Batch Anime', method: 'GET', path: '/api/anime/batch', params: 'page=1' },
   ]},
   { g: 'manga',   label: 'Manga',   items: [
     { label: 'Search Manga',   method: 'GET', path: '/api/manga/search',   params: 'q=naruto' },
