@@ -8,8 +8,8 @@
  * Source: https://www.sankavollerei.com/anime/genre
  */
 
-import { cacheGet, cacheSet }                from '../../../lib/cache.js';
-import { successResponse, gatewayError }     from '../../../lib/response-utils.js';
+import { cacheGet, cacheSet }                from '../../../../lib/cache.js';
+import { successResponse, gatewayError }     from '../../../../lib/response-utils.js';
 
 // ─────────────────────────────────────────────────────────────────
 // CONFIG
