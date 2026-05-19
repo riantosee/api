@@ -24,10 +24,10 @@ const CACHE_TTL = 600; // 10 menit
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
-  const animeId = (searchParams.get('animeId') || '').trim();
+  const animeId = (searchParams.get('slug') || '').trim();
 
   if (!animeId) {
-    return errorResponse(400, 'Parameter "animeId" diperlukan. Contoh: ?animeId=jujutsu-kaisen-s2-sub-indo');
+    return errorResponse(400, 'Parameter "animeId" diperlukan. Contoh: ?slug=jujutsu-kaisen-s2-sub-indo');
   }
 
   const cacheKey = `anime:detail:sankavollerei:${animeId}`;
