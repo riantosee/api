@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import Navbar from '../../components/layout/Navbar';
 
 // ─────────────────────────────────────────────────────────────────
-// CATEGORY CONFIG — tambah entry baru di sini untuk provider baru
+// CATEGORbY CONFIG — tambah entry baru di sini untuk provider baru
 // ─────────────────────────────────────────────────────────────────
 const CAT_BG = {
   'anime-v1'   : 'https://files.catbox.moe/7ipdhn.jpg',
