@@ -42,10 +42,10 @@ const CATEGORIES = [
       },
       {
         id      : 'anime-v2',
-        label   : 'v2 · Otakudesu',
-        provider: 'otakudesu',
+        label   : 'v2 · sankavollerei',
+        provider: 'sankavollerei',
         items   : [
-          { label: 'Search',        method: 'GET', path: '/api/v2/anime/search',  params: 'q=naruto' },
+          { label: 'Home',        method: 'GET', path: '/api/anime/home-sanka',  params: '' },
           { label: 'Latest Episode',method: 'GET', path: '/api/v2/anime/latest',  params: 'page=1' },
           { label: 'Popular',       method: 'GET', path: '/api/v2/anime/popular', params: '' },
           { label: 'Detail',        method: 'GET', path: '/api/v2/anime/detail',  params: 'slug=one-punch-man' },
