@@ -46,7 +46,7 @@ const CATEGORIES = [
         provider: 'sankavollerei',
         items   : [
           { label: 'Home',        method: 'GET', path: '/api/anime/home-sanka',  params: '' },
-          { label: 'Latest Episode',method: 'GET', path: '/api/v2/anime/latest',  params: 'page=1' },
+          { label: 'Ongoing',method: 'GET', path: '/api/anime/ongoing',  params: 'page=1' },
           { label: 'Popular',       method: 'GET', path: '/api/v2/anime/popular', params: '' },
           { label: 'Detail',        method: 'GET', path: '/api/v2/anime/detail',  params: 'slug=one-punch-man' },
           { label: 'Watch',         method: 'GET', path: '/api/v2/anime/watch',   params: 'slug=one-punch-man-episode-12' },
