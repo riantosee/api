@@ -49,7 +49,7 @@ const CATEGORIES = [
           { label: 'Ongoing',method: 'GET', path: '/api/anime/ongoing-sanka',  params: 'page=1' },
           { label: 'Complete Anime',       method: 'GET', path: '/api/anime/complete-sanka', params: '' },
           { label: 'Detail',        method: 'GET', path: '/api/anime/detail-sanka',  params: 'slug=jujutsu-kaisen-s2-sub-indo' },
-          { label: 'Schedule/Jadwal Rilis',         method: 'GET', path: '/api/anime/watch/schedule-sanka',   params: 'day=senin' },
+          { label: 'Schedule/Jadwal Rilis',         method: 'GET', path: '/api/anime/schedule-sanka',   params: 'day=senin' },
         ],
       },
     ],
