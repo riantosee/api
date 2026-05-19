@@ -48,7 +48,7 @@ const CATEGORIES = [
           { label: 'Home',        method: 'GET', path: '/api/anime/home-sanka',  params: '' },
           { label: 'Ongoing',method: 'GET', path: '/api/anime/ongoing',  params: 'page=1' },
           { label: 'Complete Anime',       method: 'GET', path: '/api/anime/complete-sanka', params: '' },
-          { label: 'Detail',        method: 'GET', path: '/api/v2/anime/detail',  params: 'slug=one-punch-man' },
+          { label: 'Detail',        method: 'GET', path: '/api/anime/detail-sanka',  params: 'slug=jujutsu-kaisen-s2-sub-indo' },
           { label: 'Watch',         method: 'GET', path: '/api/v2/anime/watch',   params: 'slug=one-punch-man-episode-12' },
         ],
       },
