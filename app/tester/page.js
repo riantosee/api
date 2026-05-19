@@ -46,7 +46,7 @@ const CATEGORIES = [
         provider: 'sankavollerei',
         items   : [
           { label: 'Home',        method: 'GET', path: '/api/anime/home-sanka',  params: '' },
-          { label: 'Ongoing',method: 'GET', path: '/api/anime/ongoing',  params: 'page=1' },
+          { label: 'Ongoing',method: 'GET', path: '/api/anime/ongoing-sanka',  params: 'page=1' },
           { label: 'Complete Anime',       method: 'GET', path: '/api/anime/complete-sanka', params: '' },
           { label: 'Detail',        method: 'GET', path: '/api/anime/detail-sanka',  params: 'slug=jujutsu-kaisen-s2-sub-indo' },
           { label: 'Schedule/Jadwal Rilis',         method: 'GET', path: '/api/anime/watch/schedule-saka',   params: 'day=senin' },
